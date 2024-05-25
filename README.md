@@ -1,23 +1,28 @@
-# Debug Log Tools
-"Debug Log Tools is a WordPress plugin offering essential utilities for managing and inspecting debug logs. Easily flush the debug log or view entries from specific time periods, simplifying debugging and troubleshooting processes for WordPress developers
+# Debug Log Tools Plugin for WordPress
+
+This plugin provides tools for viewing and managing the WordPress debug log from the admin panel, including a viewer and a flush functionality.
 
 ## Features
 
-- **Flush Debug Log:** Allows you to clear the debug.log file from the admin panel.
-- **Debug Log Viewer:** View debug log entries from a specific time period.
+- **Debug Log Viewer**: View the WordPress debug log in a new tab directly from your admin panel.
+- **Flush Debug Log**: Safely flush the debug log with a confirmation prompt to prevent accidental deletions.
 
 ## Installation
 
-1. Download the plugin zip file or clone the repository into your WordPress plugins directory.
-2. Activate the plugin through the WordPress admin panel.
+1. Download the plugin.
+2. Upload it to your WordPress website via the WordPress admin panel.
+3. Navigate to Plugins and activate the Debug Log Tools plugin.
 
 ## Usage
 
-1. Navigate to the "Debug Log Tools" menu in the WordPress admin panel.
-2. Choose a tool from the submenu:
-   - **Flush Debug Log:** Click on this option to clear the debug.log file.
-   - **Debug Log Viewer:** Enter the period (in days, hours, or minutes) and click "View Log" to see debug log entries for that duration.
+- Go to Tools > Debug Log Tools in the admin panel.
+  - Click on "View Debug Log" to open the log in a new tab.
+  - Use the "Flush Debug Log" button to clear the log, with a confirmation prompt.
+
+## Contributing
+
+Feel free to fork this repository and contribute by submitting pull requests to enhance the functionalities.
 
 ## License
 
-This project is licensed under the [GPL v3 or later](LICENSE).
+This project is licensed under the MIT License - see the LICENSE file for details.
