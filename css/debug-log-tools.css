@@ -1,0 +1,20 @@
+/* CSS for Debug Log Tools Plugin - Version 3.0.0 */
+
+.wrap {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+pre {
+    background-color: #f9f9f9;
+    border: 1px solid #e1e1e1;
+    padding: 15px;
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+button {
+    margin-top: 10px;
+}
