@@ -1,9 +1,42 @@
-// JavaScript for Debug Log Tools Plugin - Version 3.0.0
+/**
+ * Debug Log Tools Frontend JavaScript
+ *
+ * @package DebugLogTools
+ */
 
-// Ensure jQuery is loaded and run after the DOM is ready
-jQuery(document).ready(function($) {
-    // Dismiss admin notice when clicked
-    $('.notice.is-dismissible').on('click', '.notice-dismiss', function() {
-        $(this).closest('.notice').fadeOut();
-    });
-});
+/* global jQuery, ajaxurl, debugLogTools */
+
+jQuery( function( $ ) {
+    'use strict';
+    
+    let refreshInterval;
+    
+    /**
+     * Handle auto-refresh toggle
+     */
+    $( '#auto-refresh-toggle' ).on( 'change', function() {
+        if ( $( this ).is( ':checked' ) ) {
+            refreshInterval = setInterval( refreshLog, 30000 );
+        } else {
+            clearInterval( refreshInterval );
+        }
+    } );
+
+    /**
+     * Refresh log content via AJAX
+     */
+    function refreshLog() {
+        $.ajax( {
+            url: ajaxurl,
+            data: {
+                action: 'debug_log_tools_refresh',
+                nonce: debugLogTools.nonce
+            },
+            success: function( response ) {
+                if ( response.success ) {
+                    $( '.debug-log-content' ).html( response.data );
+                }
+            }
+        } );
+    }
+} );
