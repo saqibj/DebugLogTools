@@ -31,6 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Include required files
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-debug-log-manager.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-troubleshoot-tools.php';
 
 // Initialize Debug Log Manager
 new Debug_Log_Manager();
@@ -90,75 +91,85 @@ function debug_log_tools_ajax_refresh() {
 
 // Display Debug Log
 function debug_log_tools_display() {
-    if ( ! current_user_can( 'manage_options' ) ) {
+    if (!current_user_can('manage_options')) {
         return;
     }
 
-    $log_file = WP_CONTENT_DIR . '/debug.log';
-    $max_display_size = 1024 * 1024; // 1MB limit
-
-    echo '<div class="wrap">';
-    echo '<h1>' . esc_html__( 'Debug Log Tools', 'debug-log-tools' ) . '</h1>';
-
-    // Display Enable Debug Logging Option
-    $is_debug_enabled = Debug_Log_Manager::is_debug_enabled();
-    echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-    wp_nonce_field( 'toggle_debug_log', 'debug_log_tools_nonce' );
-    echo '<input type="hidden" name="action" value="debug_log_tools_toggle">';
-    echo '<label>';
-    echo '<input type="checkbox" name="enable_debug_log" ' . 
-         checked( $is_debug_enabled, true, false ) . '> ';
-    echo esc_html__( 'Enable Debug Logging', 'debug-log-tools' );
-    echo '</label>';
-    submit_button( __( 'Save Changes', 'debug-log-tools' ) );
-    echo '</form>';
-
-    // Flush Log form and debug log display
-    echo '<form method="post" action="' . admin_url('admin-post.php') . '">';
-    wp_nonce_field('flush_debug_log', 'debug_log_tools_nonce');
-    echo '<input type="hidden" name="action" value="debug_log_tools_flush">';
-    submit_button(__('Flush Log', 'debug-log-tools'));
-    echo '</form>';
-
-    // Add search box
-    echo '<div class="debug-log-controls">';
-    echo '<input type="text" id="log-search" placeholder="' . 
-        esc_attr__('Search log...', 'debug-log-tools') . 
-        '" class="regular-text">';
-    
-    // Add auto-refresh toggle
-    echo '<div class="auto-refresh-control">';
-    echo '<label>';
-    echo '<input type="checkbox" id="auto-refresh-toggle"> ';
-    echo __('Auto-refresh (30s)', 'debug-log-tools');
-    echo '</label>';
-    echo '</div>';
-    echo '</div>';
-
-    // Display debug log content
-    if (file_exists($log_file)) {
-        $file_size = filesize($log_file);
-        if ($file_size > $max_display_size) {
-            echo '<div class="notice notice-warning"><p>' . 
-                sprintf(__('Log file is large (%s MB). Showing last 1MB of data.', 'debug-log-tools'), 
-                number_format($file_size / (1024 * 1024), 2)) . 
-                '</p></div>';
-            
-            $contents = file_get_contents($log_file, false, null, $file_size - $max_display_size);
-        } else {
-            $contents = file_get_contents($log_file);
-        }
+    $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'log';
+    ?>
+    <div class="wrap">
+        <h1><?php echo esc_html__('Debug Log Tools', 'debug-log-tools'); ?></h1>
         
-        if ($contents === false) {
-            echo '<div class="notice notice-error"><p>' . __('Error reading log file.', 'debug-log-tools') . '</p></div>';
-        } else {
-            echo '<pre class="debug-log-content">' . esc_html($contents) . '</pre>';
-        }
-    } else {
-        echo '<p>' . __('No debug log found.', 'debug-log-tools') . '</p>';
-    }
+        <h2 class="nav-tab-wrapper">
+            <a href="?page=debug-log-tools&tab=log" 
+               class="nav-tab <?php echo $active_tab == 'log' ? 'nav-tab-active' : ''; ?>">
+                <?php esc_html_e('Debug Log', 'debug-log-tools'); ?>
+            </a>
+            <a href="?page=debug-log-tools&tab=troubleshoot" 
+               class="nav-tab <?php echo $active_tab == 'troubleshoot' ? 'nav-tab-active' : ''; ?>">
+                <?php esc_html_e('Troubleshoot', 'debug-log-tools'); ?>
+            </a>
+        </h2>
 
-    echo '</div>';
+        <?php
+        if ($active_tab == 'troubleshoot') {
+            debug_log_tools_display_troubleshoot();
+        } else {
+            debug_log_tools_display_log();
+        }
+        ?>
+    </div>
+    <?php
+}
+
+function debug_log_tools_display_troubleshoot() {
+    $system_info = Troubleshoot_Tools::get_system_info();
+    $issues = Troubleshoot_Tools::check_common_issues();
+    $active_plugins = Troubleshoot_Tools::get_active_plugins();
+    ?>
+    <div class="debug-log-tools-troubleshoot">
+        <h3><?php esc_html_e('System Information', 'debug-log-tools'); ?></h3>
+        <table class="widefat striped">
+            <?php foreach ($system_info as $key => $value): ?>
+                <tr>
+                    <td><strong><?php echo esc_html(ucwords(str_replace('_', ' ', $key))); ?></strong></td>
+                    <td><?php echo esc_html($value); ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+
+        <h3><?php esc_html_e('Active Plugins', 'debug-log-tools'); ?></h3>
+        <table class="widefat striped">
+            <thead>
+                <tr>
+                    <th><?php esc_html_e('Plugin', 'debug-log-tools'); ?></th>
+                    <th><?php esc_html_e('Version', 'debug-log-tools'); ?></th>
+                    <th><?php esc_html_e('Author', 'debug-log-tools'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($active_plugins as $plugin): ?>
+                    <tr>
+                        <td><?php echo esc_html($plugin['name']); ?></td>
+                        <td><?php echo esc_html($plugin['version']); ?></td>
+                        <td><?php echo esc_html($plugin['author']); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <?php if (!empty($issues)): ?>
+            <h3><?php esc_html_e('Detected Issues', 'debug-log-tools'); ?></h3>
+            <div class="debug-log-tools-issues">
+                <?php foreach ($issues as $issue): ?>
+                    <div class="notice notice-<?php echo esc_attr($issue['type']); ?>">
+                        <p><?php echo esc_html($issue['message']); ?></p>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php
 }
 
 // Add Admin Menu Item

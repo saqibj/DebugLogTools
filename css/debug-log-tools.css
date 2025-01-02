@@ -54,3 +54,40 @@
 .debug-log-tools-status.disabled {
     border-left-color: #dc3232;
 }
+
+.debug-log-tools-troubleshoot {
+    margin-top: 20px;
+}
+
+.debug-log-tools-troubleshoot table {
+    margin: 20px 0;
+}
+
+.debug-log-tools-troubleshoot h3 {
+    margin: 30px 0 15px;
+}
+
+.debug-log-tools-issues {
+    margin: 20px 0;
+}
+
+.debug-log-tools-issues .notice {
+    margin: 5px 0;
+}
+
+.nav-tab-wrapper {
+    margin-bottom: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .debug-log-tools-troubleshoot table {
+        background-color: #2b2b2b;
+        color: #f0f0f0;
+        border-color: #444;
+    }
+    
+    .debug-log-tools-troubleshoot table td,
+    .debug-log-tools-troubleshoot table th {
+        border-color: #444;
+    }
+}

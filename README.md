@@ -20,6 +20,10 @@ Debug Log Tools is a WordPress plugin that provides administrators with an easy-
 - **Dark Mode Support:** Automatic dark mode detection and styling.
 - **Debug Control:** Enable or disable WordPress debug logging directly from the admin interface
 - **Config File Management:** Automatically updates wp-config.php with appropriate debug settings
+- **System Information:** View detailed WordPress and server configuration
+- **Issue Detection:** Automatically detect common WordPress problems
+- **Plugin Overview:** List of active plugins and their versions
+- **Environment Checks:** Verify PHP settings and file permissions
 
 ## Installation
 
@@ -34,6 +38,7 @@ Debug Log Tools is a WordPress plugin that provides administrators with an easy-
 3. To flush the debug log, click the "Flush Log" button.
 4. Use the search box to filter log contents in real-time.
 5. Enable auto-refresh to automatically update the log view every 30 seconds.
+6. Use the troubleshooting tab to view system information and diagnose issues.
 
 ## Security
 
@@ -50,14 +55,28 @@ This plugin includes the following security measures:
 - Implemented real-time search/filter capability
 - Added large file handling (1MB limit with warning)
 - Added dark mode support
+- Added comprehensive troubleshooting features:
+  - System information display
+  - Common issue detection
+  - Active plugin overview
+  - Environment checks
+  - PHP configuration analysis
+  - File permission scanning
+- Added debug logging management:
+  - Enable/disable debug logging from admin interface
+  - Automatic wp-config.php management
+  - Status indicators for debug settings
 - Improved error handling for file operations
 - Enhanced UI with better control organization
 - Added AJAX-based updates for smoother operation
-- Added ability to enable/disable debug logging from admin interface
-- Added automatic wp-config.php management
+- Added tabbed interface for log and troubleshoot views
 
 ### 3.0.0
 - Initial public release
+- Basic log viewing functionality
+- Enable/disable debug logging
+- Log flushing capability
+- Admin interface integration
 
 ## License
 
