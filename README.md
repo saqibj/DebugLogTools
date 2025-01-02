@@ -7,7 +7,19 @@
 
 ## Description
 
-Debug Log Tools is a WordPress plugin that provides administrators with an easy-to-use interface for viewing, filtering, enabling/disabling, and flushing the debug log file. It simplifies troubleshooting by allowing you to manage logs directly from the WordPress dashboard.
+Debug Log Tools is a comprehensive WordPress debugging and troubleshooting plugin designed for developers and administrators. It provides an intuitive interface for managing WordPress debug logs and performing system diagnostics directly from your dashboard.
+
+The plugin simplifies the debugging process by offering real-time log viewing, advanced filtering, and automatic refresh capabilities. It also includes powerful troubleshooting tools that help identify common WordPress issues, analyze system configurations, and monitor plugin compatibility.
+
+### Key Benefits:
+- **Simplified Debugging:** View and manage debug logs without leaving WordPress
+- **Real-time Monitoring:** Auto-refresh and live search capabilities
+- **System Diagnostics:** Comprehensive system information and issue detection
+- **Safe Configuration:** Automatic handling of wp-config.php debug settings
+- **Performance Optimized:** Safe handling of large log files and efficient processing
+- **Developer Friendly:** Detailed environment information and plugin diagnostics
+
+Whether you're debugging a plugin conflict, tracking down a performance issue, or performing routine maintenance, Debug Log Tools provides the essential features needed for effective WordPress troubleshooting.
 
 ## Features
 
