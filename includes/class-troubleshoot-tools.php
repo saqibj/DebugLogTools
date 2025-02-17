@@ -74,7 +74,8 @@ class Troubleshoot_Tools {
 
         // Check file permissions
         $wp_content = WP_CONTENT_DIR;
-        if (substr(sprintf('%o', fileperms($wp_content)), -4) > '0755') {
+        $permissions = fileperms($wp_content) & 0777;
+        if ($permissions & 0x0004) { // World readable
             $issues[] = array(
                 'type' => 'warning',
                 'message' => __('wp-content directory permissions are too open.', 'debug-log-tools')
@@ -92,8 +93,22 @@ class Troubleshoot_Tools {
     public static function get_active_plugins() {
         $active_plugins = array();
         
-        foreach (get_option('active_plugins') as $plugin) {
-            $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin);
+        // Get regular active plugins
+        $plugins = (array) get_option('active_plugins', array());
+        
+        // Add network active plugins for multisite
+        if (is_multisite()) {
+            $network_plugins = array_keys((array) get_site_option('active_sitewide_plugins', array()));
+            $plugins = array_merge($plugins, $network_plugins);
+        }
+
+        foreach ($plugins as $plugin) {
+            $plugin_path = WP_PLUGIN_DIR . '/' . $plugin;
+            if (!file_exists($plugin_path)) {
+                continue;
+            }
+            
+            $plugin_data = get_plugin_data($plugin_path);
             $active_plugins[] = array(
                 'name' => $plugin_data['Name'],
                 'version' => $plugin_data['Version'],
@@ -105,22 +120,35 @@ class Troubleshoot_Tools {
     }
 
     /**
+     * Handle cron test
+     */
+    public static function handle_cron_test() {
+        set_transient('debug_log_tools_cron_test_completed', time(), 15 * MINUTE_IN_SECONDS);
+    }
+
+    /**
      * Test WordPress cron functionality
      *
      * @return bool|string True if working, error message if not
      */
     public static function test_wp_cron() {
         if (defined('DISABLE_WP_CRON') && DISABLE_WP_CRON) {
-            return __('WP Cron is disabled via configuration.', 'debug-log-tools');
+            return __('WP Cron is disabled via DISABLE_WP_CRON constant.', 'debug-log-tools');
         }
 
         $cron_test = get_transient('debug_log_tools_cron_test');
+        $cron_completed = get_transient('debug_log_tools_cron_test_completed');
+        
+        if ($cron_completed !== false) {
+            return true;
+        }
+
         if ($cron_test === false) {
             wp_schedule_single_event(time() - 1, 'debug_log_tools_cron_test');
             set_transient('debug_log_tools_cron_test', time(), 5 * MINUTE_IN_SECONDS);
             return __('Cron test scheduled. Check back in a few minutes.', 'debug-log-tools');
         }
 
-        return true;
+        return __('Waiting for cron job to complete...', 'debug-log-tools');
     }
 } 

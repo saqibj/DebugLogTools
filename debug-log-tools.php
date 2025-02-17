@@ -80,13 +80,33 @@ function debug_log_tools_ajax_refresh() {
 
     $log_file = WP_CONTENT_DIR . '/debug.log';
     if ( file_exists( $log_file ) ) {
-        $contents = file_get_contents( $log_file );
+        $contents = debug_log_tools_get_log_contents($log_file);
         if ( false === $contents ) {
             wp_send_json_error( esc_html__( 'Error reading log file.', 'debug-log-tools' ) );
         }
         wp_send_json_success( esc_html( $contents ) );
     }
     wp_send_json_error( esc_html__( 'Log file not found.', 'debug-log-tools' ) );
+}
+
+function debug_log_tools_get_log_contents($log_file) {
+    if (!file_exists($log_file)) {
+        return '';
+    }
+
+    $size = filesize($log_file);
+    $max_size = 1024 * 1024; // 1MB
+
+    $handle = fopen($log_file, 'r');
+    if ($size > $max_size) {
+        fseek($handle, -$max_size, SEEK_END);
+        // Skip first incomplete line
+        fgets($handle);
+    }
+    $contents = fread($handle, $max_size);
+    fclose($handle);
+    
+    return $contents;
 }
 
 // Display Debug Log

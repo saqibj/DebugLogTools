@@ -55,13 +55,19 @@ class Debug_Log_Manager {
      */
     private function update_wp_config( $enable_debug ) {
         $wp_config_path = ABSPATH . 'wp-config.php';
-        if ( ! file_exists( $wp_config_path ) ) {
-            return false;
+        if (!file_exists($wp_config_path) || !is_writable($wp_config_path)) {
+            throw new Exception(__('wp-config.php is not writable.', 'debug-log-tools'));
         }
 
-        $config_content = file_get_contents( $wp_config_path );
-        if ( false === $config_content ) {
-            return false;
+        // Create backup
+        $backup_path = $wp_config_path . '.backup-' . time();
+        if (!copy($wp_config_path, $backup_path)) {
+            throw new Exception(__('Failed to create backup of wp-config.php', 'debug-log-tools'));
+        }
+
+        $config_content = file_get_contents($wp_config_path);
+        if (false === $config_content) {
+            throw new Exception(__('Failed to read wp-config.php', 'debug-log-tools'));
         }
 
         $debug_constants = array(
@@ -88,7 +94,14 @@ class Debug_Log_Manager {
             }
         }
 
-        return file_put_contents( $wp_config_path, $config_content );
+        if (false === file_put_contents($wp_config_path, $config_content)) {
+            // Restore backup
+            copy($backup_path, $wp_config_path);
+            throw new Exception(__('Failed to write to wp-config.php', 'debug-log-tools'));
+        }
+
+        unlink($backup_path);
+        return true;
     }
 
     /**
