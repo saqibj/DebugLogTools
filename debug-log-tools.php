@@ -192,6 +192,53 @@ function debug_log_tools_display_troubleshoot() {
     <?php
 }
 
+// Add this function after debug_log_tools_display_troubleshoot()
+function debug_log_tools_display_log() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    $log_file = WP_CONTENT_DIR . '/debug.log';
+    $log_exists = file_exists($log_file);
+    $log_content = $log_exists ? debug_log_tools_get_log_contents($log_file) : '';
+    $debug_status = Debug_Log_Manager::is_debug_enabled() ? 'enabled' : 'disabled';
+    ?>
+    <div class="debug-log-tools-wrap">
+        <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
+            <input type="hidden" name="action" value="debug_log_tools_toggle">
+            <?php wp_nonce_field('toggle_debug_log', 'debug_log_tools_nonce'); ?>
+            <div class="debug-log-tools-controls">
+                <label>
+                    <input type="checkbox" name="enable_debug_log" <?php checked(Debug_Log_Manager::is_debug_enabled()); ?>>
+                    <?php esc_html_e('Enable Debug Logging', 'debug-log-tools'); ?>
+                </label>
+                <input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Changes', 'debug-log-tools'); ?>">
+            </div>
+        </form>
+
+        <?php if ($log_exists): ?>
+            <div class="debug-log-tools-controls">
+                <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
+                    <input type="hidden" name="action" value="debug_log_tools_flush">
+                    <?php wp_nonce_field('flush_debug_log', 'debug_log_tools_nonce'); ?>
+                    <input type="submit" class="button" value="<?php esc_attr_e('Flush Log', 'debug-log-tools'); ?>">
+                </form>
+                <input type="text" id="debug-log-search" class="regular-text" 
+                       placeholder="<?php esc_attr_e('Search log...', 'debug-log-tools'); ?>">
+            </div>
+            
+            <div class="debug-log-tools-content">
+                <?php echo esc_html($log_content); ?>
+            </div>
+        <?php else: ?>
+            <div class="notice notice-warning">
+                <p><?php esc_html_e('Debug log file not found. Enable debug logging to create the file.', 'debug-log-tools'); ?></p>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
 // Add Admin Menu Item
 function debug_log_tools_admin_menu() {
     add_submenu_page(
