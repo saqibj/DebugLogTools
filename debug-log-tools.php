@@ -90,6 +90,15 @@ function debug_log_tools_ajax_refresh() {
 }
 
 function debug_log_tools_get_log_contents($log_file) {
+    // Try to create log file if it doesn't exist and debug is enabled
+    if (!file_exists($log_file) && Debug_Log_Manager::is_debug_enabled()) {
+        $wp_content_dir = dirname($log_file);
+        if (is_writable($wp_content_dir)) {
+            @touch($log_file);
+            @chmod($log_file, 0644);
+        }
+    }
+
     if (!file_exists($log_file)) {
         return '';
     }
@@ -200,8 +209,8 @@ function debug_log_tools_display_log() {
 
     $log_file = WP_CONTENT_DIR . '/debug.log';
     $log_exists = file_exists($log_file);
-    $log_content = $log_exists ? debug_log_tools_get_log_contents($log_file) : '';
-    $debug_status = Debug_Log_Manager::is_debug_enabled() ? 'enabled' : 'disabled';
+    $log_content = debug_log_tools_get_log_contents($log_file);
+    $debug_enabled = Debug_Log_Manager::is_debug_enabled();
     ?>
     <div class="debug-log-tools-wrap">
         <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
@@ -209,14 +218,23 @@ function debug_log_tools_display_log() {
             <?php wp_nonce_field('toggle_debug_log', 'debug_log_tools_nonce'); ?>
             <div class="debug-log-tools-controls">
                 <label>
-                    <input type="checkbox" name="enable_debug_log" <?php checked(Debug_Log_Manager::is_debug_enabled()); ?>>
+                    <input type="checkbox" name="enable_debug_log" <?php checked($debug_enabled); ?>>
                     <?php esc_html_e('Enable Debug Logging', 'debug-log-tools'); ?>
                 </label>
                 <input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Changes', 'debug-log-tools'); ?>">
             </div>
         </form>
 
-        <?php if ($log_exists): ?>
+        <?php if (!$debug_enabled): ?>
+            <div class="notice notice-warning">
+                <p><?php esc_html_e('Debug logging is currently disabled. Enable it to start logging.', 'debug-log-tools'); ?></p>
+            </div>
+        <?php elseif (!$log_exists): ?>
+            <div class="notice notice-info">
+                <p><?php esc_html_e('Debug logging is enabled but no log file exists yet. The file will be created when the first error occurs.', 'debug-log-tools'); ?></p>
+                <p><?php esc_html_e('To test logging, try visiting a non-existent page on your site.', 'debug-log-tools'); ?></p>
+            </div>
+        <?php else: ?>
             <div class="debug-log-tools-controls">
                 <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
                     <input type="hidden" name="action" value="debug_log_tools_flush">
@@ -228,11 +246,7 @@ function debug_log_tools_display_log() {
             </div>
             
             <div class="debug-log-tools-content">
-                <?php echo esc_html($log_content); ?>
-            </div>
-        <?php else: ?>
-            <div class="notice notice-warning">
-                <p><?php esc_html_e('Debug log file not found. Enable debug logging to create the file.', 'debug-log-tools'); ?></p>
+                <pre><?php echo esc_html($log_content); ?></pre>
             </div>
         <?php endif; ?>
     </div>
