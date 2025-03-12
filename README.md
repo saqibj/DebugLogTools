@@ -1,6 +1,6 @@
 # Debug Log Tools
 
-**Version:** 3.0.1  
+**Version:** 3.0.2  
 **Author:** [Saqib Jawaid](https://github.com/saqibj)  
 **License:** GPL-3.0  
 **Tested up to WordPress 6.x**
@@ -61,6 +61,18 @@ This plugin includes the following security measures:
 - **File Size Protection:** Large files are handled safely to prevent memory issues.
 
 ## Changelog
+
+### 3.0.2
+- Improved error handling for wp-config.php modifications
+- Added better debug log file handling and creation
+- Enhanced multisite compatibility
+- Added proper cleanup of temporary files
+- Improved security with better escaping
+- Added more detailed error messages
+- Fixed potential file permission issues
+- Added debug.log file existence and permission checks
+- Added proper plugin data validation
+- Improved system information display
 
 ### 3.0.1
 - Added auto-refresh functionality with 30-second intervals

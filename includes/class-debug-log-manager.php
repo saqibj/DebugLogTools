@@ -36,38 +36,58 @@ class Debug_Log_Manager {
         }
 
         $enable_debug = isset( $_POST['enable_debug_log'] );
-        $this->update_wp_config( $enable_debug );
-
-        wp_safe_redirect( 
-            add_query_arg( 
-                'debug_updated', 
-                $enable_debug ? '1' : '0', 
-                admin_url( 'tools.php?page=debug-log-tools' ) 
-            ) 
-        );
-        exit;
+        
+        try {
+            $this->update_wp_config( $enable_debug );
+            
+            // Create log file if enabling debug
+            if ( $enable_debug ) {
+                $log_file = WP_CONTENT_DIR . '/debug.log';
+                if ( ! file_exists( $log_file ) && is_writable( WP_CONTENT_DIR ) ) {
+                    @touch( $log_file );
+                    @chmod( $log_file, 0644 );
+                }
+            }
+            
+            wp_safe_redirect( 
+                add_query_arg( 
+                    'debug_updated', 
+                    $enable_debug ? '1' : '0', 
+                    admin_url( 'tools.php?page=debug-log-tools' ) 
+                ) 
+            );
+            exit;
+        } catch ( Exception $e ) {
+            wp_die( esc_html( $e->getMessage() ) );
+        }
     }
 
     /**
      * Update wp-config.php file.
      *
      * @param bool $enable_debug Whether to enable debug logging.
+     * @throws Exception If file operations fail.
      */
     private function update_wp_config( $enable_debug ) {
         $wp_config_path = ABSPATH . 'wp-config.php';
-        if (!file_exists($wp_config_path) || !is_writable($wp_config_path)) {
-            throw new Exception(__('wp-config.php is not writable.', 'debug-log-tools'));
+        if ( ! file_exists( $wp_config_path ) ) {
+            throw new Exception( esc_html__( 'wp-config.php not found.', 'debug-log-tools' ) );
+        }
+        
+        if ( ! is_writable( $wp_config_path ) ) {
+            throw new Exception( esc_html__( 'wp-config.php is not writable.', 'debug-log-tools' ) );
         }
 
         // Create backup
         $backup_path = $wp_config_path . '.backup-' . time();
-        if (!copy($wp_config_path, $backup_path)) {
-            throw new Exception(__('Failed to create backup of wp-config.php', 'debug-log-tools'));
+        if ( ! copy( $wp_config_path, $backup_path ) ) {
+            throw new Exception( esc_html__( 'Failed to create backup of wp-config.php', 'debug-log-tools' ) );
         }
 
-        $config_content = file_get_contents($wp_config_path);
-        if (false === $config_content) {
-            throw new Exception(__('Failed to read wp-config.php', 'debug-log-tools'));
+        $config_content = file_get_contents( $wp_config_path );
+        if ( false === $config_content ) {
+            unlink( $backup_path );
+            throw new Exception( esc_html__( 'Failed to read wp-config.php', 'debug-log-tools' ) );
         }
 
         $debug_constants = array(
@@ -77,7 +97,7 @@ class Debug_Log_Manager {
         );
 
         foreach ( $debug_constants as $constant ) {
-            $pattern = "/define\s*\(\s*['\"]" . $constant . "['\"]\s*,\s*(?:true|false)\s*\);/";
+            $pattern = "/define\s*\(\s*['\"]" . preg_quote( $constant, '/' ) . "['\"]\s*,\s*(?:true|false)\s*\);/";
             $replacement = "define('" . $constant . "', " . 
                          ( $enable_debug ? 'true' : 'false' ) . ");";
             
@@ -86,7 +106,7 @@ class Debug_Log_Manager {
             } else {
                 // Add constants if they don't exist
                 $config_content = preg_replace(
-                    "/(<\?php)/",
+                    "/(<\?php)/i",
                     "<?php\n\n" . $replacement,
                     $config_content,
                     1
@@ -94,13 +114,14 @@ class Debug_Log_Manager {
             }
         }
 
-        if (false === file_put_contents($wp_config_path, $config_content)) {
+        if ( false === file_put_contents( $wp_config_path, $config_content ) ) {
             // Restore backup
-            copy($backup_path, $wp_config_path);
-            throw new Exception(__('Failed to write to wp-config.php', 'debug-log-tools'));
+            copy( $backup_path, $wp_config_path );
+            unlink( $backup_path );
+            throw new Exception( esc_html__( 'Failed to write to wp-config.php', 'debug-log-tools' ) );
         }
 
-        unlink($backup_path);
+        unlink( $backup_path );
         return true;
     }
 
@@ -110,6 +131,7 @@ class Debug_Log_Manager {
      * @return bool
      */
     public static function is_debug_enabled() {
-        return defined( 'WP_DEBUG' ) && WP_DEBUG;
+        return defined( 'WP_DEBUG' ) && WP_DEBUG && 
+               defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG;
     }
 } 

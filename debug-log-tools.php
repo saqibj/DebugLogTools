@@ -11,12 +11,14 @@
  * Plugin Name: Debug Log Tools
  * Plugin URI:  https://github.com/saqibj/debug-log-tools
  * Description: View, filter, and manage WordPress debug logs from your dashboard.
- * Version:     3.0.1
+ * Version:     3.0.2
  * Author:      Saqib Jawaid
  * Author URI:  https://github.com/saqibj
  * Text Domain: debug-log-tools
  * License:     GPL-3.0
  * License URI: https://www.gnu.org/licenses/gpl-3.0.txt
+ * Requires at least: 5.0
+ * Requires PHP: 7.4
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +26,15 @@
  * (at your option) any later version.
  */
 
-// Prevent direct access.
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
+// If this file is called directly, abort.
+if (!defined('WPINC')) {
+    die;
 }
+
+// Define plugin constants
+define('DEBUG_LOG_TOOLS_VERSION', '3.0.2');
+define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Include required files
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-debug-log-manager.php';
@@ -40,7 +47,7 @@ new Debug_Log_Manager();
  * Enqueue admin scripts and styles
  */
 function debug_log_tools_enqueue_assets() {
-    $version = '3.0.1';
+    $version = '3.0.2';
     
     wp_enqueue_style(
         'debug-log-tools-css',
@@ -305,3 +312,35 @@ function debug_log_tools_admin_notices() {
     }
 }
 add_action('admin_notices', 'debug_log_tools_admin_notices');
+
+// Add AJAX handler
+add_action('wp_ajax_debug_log_tools_refresh', 'debug_log_tools_ajax_refresh');
+
+// Register activation hook
+register_activation_hook(__FILE__, 'debug_log_tools_activate');
+
+/**
+ * Plugin activation callback
+ */
+function debug_log_tools_activate() {
+    // Check WordPress version
+    if (version_compare(get_bloginfo('version'), '5.0', '<')) {
+        deactivate_plugins(plugin_basename(__FILE__));
+        wp_die(__('Debug Log Tools requires WordPress 5.0 or higher.', 'debug-log-tools'));
+    }
+
+    // Check PHP version
+    if (version_compare(PHP_VERSION, '7.4', '<')) {
+        deactivate_plugins(plugin_basename(__FILE__));
+        wp_die(__('Debug Log Tools requires PHP 7.4 or higher.', 'debug-log-tools'));
+    }
+
+    // Create log file if it doesn't exist and debug is enabled
+    if (Debug_Log_Manager::is_debug_enabled()) {
+        $log_file = WP_CONTENT_DIR . '/debug.log';
+        if (!file_exists($log_file) && is_writable(WP_CONTENT_DIR)) {
+            @touch($log_file);
+            @chmod($log_file, 0644);
+        }
+    }
+}
