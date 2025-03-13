@@ -558,6 +558,97 @@ function debug_log_tools_flush_log() {
 }
 add_action('admin_post_debug_log_tools_flush', 'debug_log_tools_flush_log');
 
+/**
+ * Clear the debug log file
+ */
+function debug_log_tools_clear_log() {
+    if (!current_user_can('manage_options')) {
+        wp_die(__('Unauthorized access', 'debug-log-tools'));
+    }
+
+    if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'clear_debug_log')) {
+        wp_die(__('Security check failed', 'debug-log-tools'));
+    }
+
+    $log_file = WP_CONTENT_DIR . '/debug.log';
+    
+    // Check if file exists
+    if (!file_exists($log_file)) {
+        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&clear_error=1'));
+        exit;
+    }
+    
+    // Check if file is writable
+    if (!is_writable($log_file)) {
+        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&clear_error=2'));
+        exit;
+    }
+    
+    // Try to clear the log
+    $result = @file_put_contents($log_file, '');
+    if ($result === false) {
+        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&clear_error=3'));
+        exit;
+    }
+
+    // Success
+    wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&cleared=1'));
+    exit;
+}
+add_action('admin_post_debug_log_tools_clear', 'debug_log_tools_clear_log');
+
+/**
+ * Download the debug log file
+ */
+function debug_log_tools_download_log() {
+    if (!current_user_can('manage_options')) {
+        wp_die(__('Unauthorized access', 'debug-log-tools'));
+    }
+
+    if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'download_debug_log')) {
+        wp_die(__('Security check failed', 'debug-log-tools'));
+    }
+
+    $log_file = WP_CONTENT_DIR . '/debug.log';
+    if (!file_exists($log_file) || !is_readable($log_file)) {
+        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&download_error=1'));
+        exit;
+    }
+
+    // Disable any active plugins that might interfere with download
+    $plugins_to_disable = array('wp-super-cache', 'w3-total-cache');
+    foreach ($plugins_to_disable as $plugin) {
+        if (function_exists('is_plugin_active') && is_plugin_active($plugin . '/' . $plugin . '.php')) {
+            // Temporarily disable the plugin
+            @define('DONOTCACHEPAGE', true);
+        }
+    }
+
+    // Disable WordPress compression
+    @ini_set('zlib.output_compression', 'Off');
+    
+    // End any previous output buffering
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    
+    // Set headers for file download
+    nocache_headers(); // This will prevent caching
+    header('Content-Description: File Transfer');
+    header('Content-Type: text/plain');
+    header('Content-Disposition: attachment; filename="debug-log-' . date('Y-m-d-H-i-s') . '.txt"');
+    header('Content-Transfer-Encoding: binary');
+    header('Expires: 0');
+    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+    header('Pragma: public');
+    header('Content-Length: ' . filesize($log_file));
+    
+    // Read the file and output its contents
+    readfile($log_file);
+    exit;
+}
+add_action('admin_post_debug_log_tools_download', 'debug_log_tools_download_log');
+
 // Display Success Message After Flush
 function debug_log_tools_admin_notices() {
     if ( isset( $_GET['debug_updated'] ) ) {
@@ -573,6 +664,37 @@ function debug_log_tools_admin_notices() {
     if ( isset( $_GET['flushed'] ) && $_GET['flushed'] == '1' ) {
         echo '<div class="notice notice-success is-dismissible"><p>' . 
              esc_html__( 'Debug log flushed successfully.', 'debug-log-tools' ) . 
+             '</p></div>';
+    }
+    
+    if ( isset( $_GET['cleared'] ) && $_GET['cleared'] == '1' ) {
+        echo '<div class="notice notice-success is-dismissible"><p>' . 
+             esc_html__( 'Debug log cleared successfully.', 'debug-log-tools' ) . 
+             '</p></div>';
+    }
+    
+    if ( isset( $_GET['clear_error'] ) ) {
+        $error_code = intval($_GET['clear_error']);
+        $error_message = esc_html__( 'Error: Could not clear debug log.', 'debug-log-tools' );
+        
+        switch ( $error_code ) {
+            case 1:
+                $error_message = esc_html__( 'Error: Debug log file does not exist.', 'debug-log-tools' );
+                break;
+            case 2:
+                $error_message = esc_html__( 'Error: Debug log file is not writable. Please check file permissions.', 'debug-log-tools' );
+                break;
+            case 3:
+                $error_message = esc_html__( 'Error: Failed to write to debug log file.', 'debug-log-tools' );
+                break;
+        }
+        
+        echo '<div class="notice notice-error is-dismissible"><p>' . $error_message . '</p></div>';
+    }
+    
+    if ( isset( $_GET['download_error'] ) && $_GET['download_error'] == '1' ) {
+        echo '<div class="notice notice-error is-dismissible"><p>' . 
+             esc_html__( 'Error: Debug log file does not exist or could not be accessed.', 'debug-log-tools' ) . 
              '</p></div>';
     }
 }
