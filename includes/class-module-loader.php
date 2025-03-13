@@ -33,20 +33,17 @@ class Module_Loader {
      */
     private function load_modules() {
         $module_dirs = array(
-            'analysis',
             'debugging',
             'notifications',
             'performance',
-            'security',
-            'ui',
-            'backup',
-            'integration',
-            'multisite',
-            'docs'
+            'security'
         );
 
         foreach ($module_dirs as $dir) {
-            $this->load_module($dir);
+            $module_path = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/' . $dir;
+            if (is_dir($module_path)) {
+                $this->load_module($dir);
+            }
         }
     }
 

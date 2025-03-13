@@ -11,7 +11,7 @@
  * Plugin Name: Debug Log Tools
  * Plugin URI:  https://github.com/saqibj/debug-log-tools
  * Description: View, filter, and manage WordPress debug logs from your dashboard.
- * Version:     3.1.0
+ * Version:     3.1.1
  * Author:      Saqib Jawaid
  * Author URI:  https://github.com/saqibj
  * Text Domain: debug-log-tools
@@ -32,7 +32,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('DEBUG_LOG_TOOLS_VERSION', '3.1.0');
+define('DEBUG_LOG_TOOLS_VERSION', '3.1.1');
 define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -48,12 +48,80 @@ $module_loader = new Module_Loader();
 // Initialize Debug Log Manager
 new Debug_Log_Manager();
 
+// Initialize scheduled tasks
+add_action('init', 'debug_log_tools_init_schedules');
+
+/**
+ * Initialize scheduled tasks
+ */
+function debug_log_tools_init_schedules() {
+    // Schedule cleanup task (daily)
+    if (!wp_next_scheduled('debug_log_tools_cleanup')) {
+        wp_schedule_event(time(), 'daily', 'debug_log_tools_cleanup');
+    }
+
+    // Schedule security scan (hourly)
+    if (!wp_next_scheduled('debug_log_tools_security_scan')) {
+        wp_schedule_event(time(), 'hourly', 'debug_log_tools_security_scan');
+    }
+
+    // Schedule performance check (every 15 minutes)
+    if (!wp_next_scheduled('debug_log_tools_performance_check')) {
+        wp_schedule_event(time(), 'debug_log_tools_15min', 'debug_log_tools_performance_check');
+    }
+}
+
+// Add custom cron schedule
+add_filter('cron_schedules', 'debug_log_tools_add_cron_schedules');
+
+/**
+ * Add custom cron schedules
+ *
+ * @param array $schedules Existing schedules
+ * @return array Modified schedules
+ */
+function debug_log_tools_add_cron_schedules($schedules) {
+    $schedules['debug_log_tools_15min'] = array(
+        'interval' => 15 * MINUTE_IN_SECONDS,
+        'display'  => __('Every 15 minutes', 'debug-log-tools')
+    );
+    return $schedules;
+}
+
+// Add cleanup task handler
+add_action('debug_log_tools_cleanup', 'debug_log_tools_do_cleanup');
+
+/**
+ * Cleanup task handler
+ */
+function debug_log_tools_do_cleanup() {
+    // Clean up old log entries
+    $log_file = WP_CONTENT_DIR . '/debug.log';
+    if (file_exists($log_file) && filesize($log_file) > 10 * MB_IN_BYTES) {
+        // Keep only the last 10MB of data
+        $handle = fopen($log_file, 'r+');
+        if ($handle) {
+            fseek($handle, -10 * MB_IN_BYTES, SEEK_END);
+            $data = fread($handle, 10 * MB_IN_BYTES);
+            rewind($handle);
+            fwrite($handle, $data);
+            ftruncate($handle, strlen($data));
+            fclose($handle);
+        }
+    }
+
+    // Clean up old transients
+    delete_expired_transients(true);
+}
+
 /**
  * Enqueue admin scripts and styles
  */
 function debug_log_tools_enqueue_assets() {
     $version = DEBUG_LOG_TOOLS_VERSION;
+    $screen = get_current_screen();
     
+    // Core plugin assets
     wp_enqueue_style(
         'debug-log-tools-css',
         plugins_url( 'css/debug-log-tools.css', __FILE__ ),
@@ -77,6 +145,39 @@ function debug_log_tools_enqueue_assets() {
             'ajaxurl' => admin_url( 'admin-ajax.php' )
         )
     );
+
+    // Module-specific assets
+    if ($screen && strpos($screen->id, 'debug-log-tools') !== false) {
+        // Debugging module assets
+        wp_enqueue_style(
+            'debug-log-tools-debugging',
+            plugins_url('includes/modules/debugging/css/debugging.css', __FILE__),
+            array(),
+            $version
+        );
+        wp_enqueue_script(
+            'debug-log-tools-debugging',
+            plugins_url('includes/modules/debugging/js/debugging.js', __FILE__),
+            array('jquery', 'debug-log-tools-js'),
+            $version,
+            true
+        );
+
+        // Security module assets
+        wp_enqueue_style(
+            'debug-log-tools-security',
+            plugins_url('includes/modules/security/css/security.css', __FILE__),
+            array(),
+            $version
+        );
+        wp_enqueue_script(
+            'debug-log-tools-security',
+            plugins_url('includes/modules/security/js/security.js', __FILE__),
+            array('jquery', 'debug-log-tools-js'),
+            $version,
+            true
+        );
+    }
 }
 add_action('admin_enqueue_scripts', 'debug_log_tools_enqueue_assets');
 
@@ -321,8 +422,9 @@ add_action('admin_notices', 'debug_log_tools_admin_notices');
 // Add AJAX handler
 add_action('wp_ajax_debug_log_tools_refresh', 'debug_log_tools_ajax_refresh');
 
-// Register activation hook
+// Register activation/deactivation hooks
 register_activation_hook(__FILE__, 'debug_log_tools_activate');
+register_deactivation_hook(__FILE__, 'debug_log_tools_deactivate');
 
 /**
  * Plugin activation callback
@@ -348,4 +450,58 @@ function debug_log_tools_activate() {
             @chmod($log_file, 0644);
         }
     }
+
+    // Activate default modules
+    $default_modules = array('debugging', 'notifications', 'performance', 'security');
+    foreach ($default_modules as $module) {
+        update_option('debug_log_tools_module_' . $module . '_active', true);
+    }
+
+    // Set default settings
+    if (!get_option('debug_log_tools_notification_settings')) {
+        update_option('debug_log_tools_notification_settings', array(
+            'email_enabled' => false,
+            'slack_enabled' => false,
+            'notification_threshold' => 'error',
+            'excluded_errors' => array()
+        ));
+    }
+
+    if (!get_option('debug_log_tools_performance_settings')) {
+        update_option('debug_log_tools_performance_settings', array(
+            'monitor_queries' => true,
+            'monitor_http' => true,
+            'monitor_cache' => true,
+            'slow_query_threshold' => 1.0,
+            'memory_warning_threshold' => 75
+        ));
+    }
+
+    if (!get_option('debug_log_tools_security_settings')) {
+        update_option('debug_log_tools_security_settings', array(
+            'monitor_file_access' => true,
+            'monitor_login_attempts' => true,
+            'monitor_file_changes' => true,
+            'blacklisted_ips' => array(),
+            'blacklisted_paths' => array()
+        ));
+    }
+
+    // Store version
+    update_option('debug_log_tools_version', DEBUG_LOG_TOOLS_VERSION);
+}
+
+/**
+ * Plugin deactivation callback
+ */
+function debug_log_tools_deactivate() {
+    // Clear scheduled hooks
+    wp_clear_scheduled_hook('debug_log_tools_cleanup');
+    wp_clear_scheduled_hook('debug_log_tools_security_scan');
+    wp_clear_scheduled_hook('debug_log_tools_performance_check');
+    
+    // Clear transients
+    delete_transient('debug_log_tools_notifications_queue');
+    delete_transient('debug_log_tools_performance_data');
+    delete_transient('debug_log_tools_security_events');
 }
