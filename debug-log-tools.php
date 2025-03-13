@@ -32,12 +32,12 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('DEBUG_LOG_TOOLS_VERSION', '3.0.2');
+define('DEBUG_LOG_TOOLS_VERSION', '3.1.0');
 define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Include required files
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-base-module.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/modules/class-base-module.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-module-loader.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-debug-log-manager.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-troubleshoot-tools.php';
@@ -52,7 +52,7 @@ new Debug_Log_Manager();
  * Enqueue admin scripts and styles
  */
 function debug_log_tools_enqueue_assets() {
-    $version = '3.0.2';
+    $version = DEBUG_LOG_TOOLS_VERSION;
     
     wp_enqueue_style(
         'debug-log-tools-css',
