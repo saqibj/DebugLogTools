@@ -27,7 +27,7 @@ class Module_Loader {
      */
     public function __construct() {
         $this->load_modules();
-        add_action('admin_menu', array($this, 'add_modules_page'));
+        \add_action('admin_menu', array($this, 'add_modules_page'));
     }
 
     /**
@@ -105,10 +105,10 @@ class Module_Loader {
      * Add modules management page
      */
     public function add_modules_page() {
-        add_submenu_page(
+        \add_submenu_page(
             'tools.php',
-            __('Debug Log Modules', 'debug-log-tools'),
-            __('Debug Log Modules', 'debug-log-tools'),
+            \__('Debug Log Modules', 'debug-log-tools'),
+            \__('Debug Log Modules', 'debug-log-tools'),
             'manage_options',
             'debug-log-modules',
             array($this, 'render_modules_page')
@@ -119,14 +119,14 @@ class Module_Loader {
      * Render modules management page
      */
     public function render_modules_page() {
-        if (!current_user_can('manage_options')) {
+        if (!\current_user_can('manage_options')) {
             return;
         }
 
         // Handle module activation/deactivation
-        if (isset($_POST['module_action']) && check_admin_referer('debug_log_tools_modules')) {
-            $module_id = sanitize_text_field($_POST['module_id']);
-            $action = sanitize_text_field($_POST['module_action']);
+        if (isset($_POST['module_action']) && \check_admin_referer('debug_log_tools_modules')) {
+            $module_id = \sanitize_text_field($_POST['module_id']);
+            $action = \sanitize_text_field($_POST['module_action']);
 
             if (isset($this->modules[$module_id])) {
                 if ($action === 'activate') {
@@ -140,27 +140,27 @@ class Module_Loader {
         // Display modules list
         ?>
         <div class="wrap">
-            <h1><?php echo esc_html__('Debug Log Modules', 'debug-log-tools'); ?></h1>
+            <h1><?php echo \esc_html__('Debug Log Modules', 'debug-log-tools'); ?></h1>
             
             <div class="modules-grid">
                 <?php foreach ($this->modules as $module_id => $module): ?>
                     <div class="module-card">
-                        <h2><?php echo esc_html($module->get_module_name()); ?></h2>
-                        <p><?php echo esc_html($module->get_module_description()); ?></p>
+                        <h2><?php echo \esc_html($module->get_module_name()); ?></h2>
+                        <p><?php echo \esc_html($module->get_module_description()); ?></p>
                         
                         <form method="post" action="">
-                            <?php wp_nonce_field('debug_log_tools_modules'); ?>
-                            <input type="hidden" name="module_id" value="<?php echo esc_attr($module_id); ?>">
+                            <?php \wp_nonce_field('debug_log_tools_modules'); ?>
+                            <input type="hidden" name="module_id" value="<?php echo \esc_attr($module_id); ?>">
                             
                             <?php if ($module->is_active()): ?>
                                 <input type="hidden" name="module_action" value="deactivate">
                                 <button type="submit" class="button">
-                                    <?php esc_html_e('Deactivate', 'debug-log-tools'); ?>
+                                    <?php \esc_html_e('Deactivate', 'debug-log-tools'); ?>
                                 </button>
                             <?php else: ?>
                                 <input type="hidden" name="module_action" value="activate">
                                 <button type="submit" class="button button-primary">
-                                    <?php esc_html_e('Activate', 'debug-log-tools'); ?>
+                                    <?php \esc_html_e('Activate', 'debug-log-tools'); ?>
                                 </button>
                             <?php endif; ?>
                         </form>

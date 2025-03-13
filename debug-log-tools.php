@@ -51,19 +51,43 @@ spl_autoload_register(function ($class) {
 
     // Get the relative class name
     $relative_class = substr($class, $len);
-
-    // Replace namespace separators with directory separators
-    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-
+    
+    // First, try WordPress naming convention (class-name-format.php)
+    $class_parts = explode('\\', $relative_class);
+    $class_name = end($class_parts);
+    
+    // Convert from CamelCase to kebab-case
+    $file_name = 'class-' . strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', str_replace('_', '-', $class_name)));
+    
+    // Handle module classes
+    if (count($class_parts) > 1 && $class_parts[0] === 'Modules') {
+        // For module classes, use modules/name/class-name.php
+        $module_name = strtolower($class_parts[1]);
+        $file = $base_dir . 'modules/' . $module_name . '/' . $file_name . '.php';
+    } else {
+        // For core classes, use includes/class-name.php
+        $file = $base_dir . $file_name . '.php';
+    }
+    
     // If the file exists, require it
     if (file_exists($file)) {
         require_once $file;
-    } else {
-        error_log(sprintf(
-            'Debug Log Tools: Class file not found: %s',
-            $file
-        ));
+        return;
     }
+    
+    // Fallback to PSR-4 style
+    $psr4_file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
+    if (file_exists($psr4_file)) {
+        require_once $psr4_file;
+        return;
+    }
+    
+    error_log(sprintf(
+        'Debug Log Tools: Class %s not found. Tried files %s and %s',
+        $class,
+        $file,
+        $psr4_file
+    ));
 });
 
 /**

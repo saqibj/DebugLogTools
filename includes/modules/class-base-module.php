@@ -3,15 +3,16 @@
  * Base Module Class
  *
  * @package DebugLogTools
- * @subpackage Modules
  */
 
-if (!defined('ABSPATH')) {
+namespace DebugLogTools\Modules;
+
+if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
 /**
- * Abstract class Base_Module
+ * Class Base_Module
  */
 abstract class Base_Module {
     /**
@@ -37,21 +38,16 @@ abstract class Base_Module {
 
     /**
      * Constructor
+     *
+     * @param string $module_id Module ID.
+     * @param string $module_name Module name.
+     * @param string $module_description Module description.
      */
-    public function __construct() {
-        $this->init();
-        $this->register_hooks();
+    public function __construct( $module_id, $module_name, $module_description ) {
+        $this->module_id = $module_id;
+        $this->module_name = $module_name;
+        $this->module_description = $module_description;
     }
-
-    /**
-     * Initialize the module
-     */
-    abstract protected function init();
-
-    /**
-     * Register WordPress hooks
-     */
-    abstract protected function register_hooks();
 
     /**
      * Get module ID
@@ -86,7 +82,8 @@ abstract class Base_Module {
      * @return bool
      */
     public function is_active() {
-        return (bool) get_option('debug_log_tools_module_' . $this->module_id . '_active', true);
+        $active_modules = \get_option( 'debug_log_tools_active_modules', array() );
+        return in_array( $this->module_id, $active_modules, true );
     }
 
     /**
@@ -95,7 +92,13 @@ abstract class Base_Module {
      * @return bool
      */
     public function activate() {
-        return update_option('debug_log_tools_module_' . $this->module_id . '_active', true);
+        $active_modules = \get_option( 'debug_log_tools_active_modules', array() );
+        if ( ! in_array( $this->module_id, $active_modules, true ) ) {
+            $active_modules[] = $this->module_id;
+            \update_option( 'debug_log_tools_active_modules', $active_modules );
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -104,6 +107,18 @@ abstract class Base_Module {
      * @return bool
      */
     public function deactivate() {
-        return update_option('debug_log_tools_module_' . $this->module_id . '_active', false);
+        $active_modules = \get_option( 'debug_log_tools_active_modules', array() );
+        $key = array_search( $this->module_id, $active_modules, true );
+        if ( false !== $key ) {
+            unset( $active_modules[ $key ] );
+            \update_option( 'debug_log_tools_active_modules', array_values( $active_modules ) );
+            return true;
+        }
+        return false;
     }
+
+    /**
+     * Initialize module
+     */
+    abstract public function init();
 } 

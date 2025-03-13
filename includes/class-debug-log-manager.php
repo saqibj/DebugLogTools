@@ -20,7 +20,7 @@ class Debug_Log_Manager {
      * Initialize the debug log manager.
      */
     public function __construct() {
-        add_action( 'admin_post_debug_log_tools_toggle', array( $this, 'handle_debug_toggle' ) );
+        \add_action( 'admin_post_debug_log_tools_toggle', array( $this, 'handle_debug_toggle' ) );
     }
 
     /**
@@ -34,14 +34,14 @@ class Debug_Log_Manager {
      * Handle debug logging toggle.
      */
     public function handle_debug_toggle() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( esc_html__( 'Unauthorized access', 'debug-log-tools' ) );
+        if ( ! \current_user_can( 'manage_options' ) ) {
+            \wp_die( \esc_html__( 'Unauthorized access', 'debug-log-tools' ) );
         }
 
         if ( ! isset( $_POST['debug_log_tools_nonce'] ) || 
-             ! wp_verify_nonce( $_POST['debug_log_tools_nonce'], 'toggle_debug_log' ) 
+             ! \wp_verify_nonce( $_POST['debug_log_tools_nonce'], 'toggle_debug_log' ) 
         ) {
-            wp_die( esc_html__( 'Security check failed', 'debug-log-tools' ) );
+            \wp_die( \esc_html__( 'Security check failed', 'debug-log-tools' ) );
         }
 
         $enable_debug = isset( $_POST['enable_debug_log'] );
@@ -51,23 +51,23 @@ class Debug_Log_Manager {
             
             // Create log file if enabling debug
             if ( $enable_debug ) {
-                $log_file = WP_CONTENT_DIR . '/debug.log';
-                if ( ! file_exists( $log_file ) && is_writable( WP_CONTENT_DIR ) ) {
+                $log_file = \WP_CONTENT_DIR . '/debug.log';
+                if ( ! file_exists( $log_file ) && is_writable( \WP_CONTENT_DIR ) ) {
                     @touch( $log_file );
                     @chmod( $log_file, 0644 );
                 }
             }
             
-            wp_safe_redirect( 
-                add_query_arg( 
+            \wp_safe_redirect( 
+                \add_query_arg( 
                     'debug_updated', 
                     $enable_debug ? '1' : '0', 
-                    admin_url( 'tools.php?page=debug-log-tools' ) 
+                    \admin_url( 'tools.php?page=debug-log-tools' ) 
                 ) 
             );
             exit;
-        } catch ( Exception $e ) {
-            wp_die( esc_html( $e->getMessage() ) );
+        } catch ( \Exception $e ) {
+            \wp_die( \esc_html( $e->getMessage() ) );
         }
     }
 
