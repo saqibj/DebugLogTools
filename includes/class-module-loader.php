@@ -70,7 +70,29 @@ class Module_Loader {
             $class_name = 'DebugLogTools\\Modules\\' . $this->get_module_class_name($module_dir);
             
             if (class_exists($class_name)) {
-                $this->modules[$module_dir] = new $class_name();
+                // Don't try to instantiate directly - the module class should handle its own constructor
+                $reflection = new \ReflectionClass($class_name);
+                if ($reflection->isInstantiable()) {
+                    try {
+                        // Construct module with required params
+                        $this->modules[$module_dir] = $reflection->newInstance();
+                        // Let the module know it's ID for internal tracking
+                        if (method_exists($this->modules[$module_dir], 'set_module_id')) {
+                            $this->modules[$module_dir]->set_module_id($module_dir);
+                        }
+                    } catch (\Exception $e) {
+                        error_log(sprintf(
+                            'Debug Log Tools: Failed to instantiate module %s: %s',
+                            $class_name,
+                            $e->getMessage()
+                        ));
+                    }
+                } else {
+                    error_log(sprintf(
+                        'Debug Log Tools: Module class %s is not instantiable',
+                        $class_name
+                    ));
+                }
             } else {
                 error_log(sprintf(
                     'Debug Log Tools: Module class %s not found in file %s',

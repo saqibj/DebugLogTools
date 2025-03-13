@@ -39,14 +39,22 @@ abstract class Base_Module {
     /**
      * Constructor
      *
-     * @param string $module_id Module ID.
-     * @param string $module_name Module name.
-     * @param string $module_description Module description.
+     * Child classes should override this and call parent::__construct()
+     * with the appropriate values.
      */
-    public function __construct( $module_id, $module_name, $module_description ) {
+    public function __construct() {
+        // Default values that will be overridden by child classes
+        $this->module_name = 'Unnamed Module';
+        $this->module_description = 'This module has no description.';
+    }
+
+    /**
+     * Set module ID
+     * 
+     * @param string $module_id Module ID.
+     */
+    public function set_module_id($module_id) {
         $this->module_id = $module_id;
-        $this->module_name = $module_name;
-        $this->module_description = $module_description;
     }
 
     /**

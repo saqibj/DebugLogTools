@@ -16,16 +16,15 @@ if (!defined('ABSPATH')) {
  * Class Debugging
  */
 class Debugging extends Base_Module {
-
     /**
      * Constructor
      */
     public function __construct() {
-        parent::__construct(
-            'debugging',
-            'Debugging',
-            'View and manage WordPress debug logs'
-        );
+        parent::__construct();
+        
+        // Set module properties
+        $this->module_name = 'Debugging';
+        $this->module_description = 'View and manage WordPress debug logs';
     }
 
     /**
@@ -36,6 +35,7 @@ class Debugging extends Base_Module {
             return;
         }
 
+        // Add menu pages and hooks
         \add_action('admin_menu', array($this, 'add_menu_page'));
     }
 
