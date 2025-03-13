@@ -86,42 +86,47 @@ class Debug_Log_Manager {
 
         $config_content = file_get_contents( $wp_config_path );
         if ( false === $config_content ) {
-            unlink( $backup_path );
+            @unlink( $backup_path );
             throw new Exception( esc_html__( 'Failed to read wp-config.php', 'debug-log-tools' ) );
         }
 
+        // Normalize line endings
+        $config_content = str_replace("\r\n", "\n", $config_content);
+        $config_content = str_replace("\r", "\n", $config_content);
+
         $debug_constants = array(
-            'WP_DEBUG',
-            'WP_DEBUG_LOG',
-            'WP_DEBUG_DISPLAY'
+            'WP_DEBUG' => $enable_debug ? 'true' : 'false',
+            'WP_DEBUG_LOG' => $enable_debug ? 'true' : 'false',
+            'WP_DEBUG_DISPLAY' => 'false'
         );
 
-        foreach ( $debug_constants as $constant ) {
+        foreach ( $debug_constants as $constant => $value ) {
+            // Check for existing define
             $pattern = "/define\s*\(\s*['\"]" . preg_quote( $constant, '/' ) . "['\"]\s*,\s*(?:true|false)\s*\);/";
-            $replacement = "define('" . $constant . "', " . 
-                         ( $enable_debug ? 'true' : 'false' ) . ");";
-            
             if ( preg_match( $pattern, $config_content ) ) {
-                $config_content = preg_replace( $pattern, $replacement, $config_content );
+                $config_content = preg_replace( $pattern, "define('$constant', $value);", $config_content );
             } else {
-                // Add constants if they don't exist
+                // Add new define after the opening PHP tag
                 $config_content = preg_replace(
                     "/(<\?php)/i",
-                    "<?php\n\n" . $replacement,
+                    "<?php\n\n// Debug Log Tools\n" . "define('$constant', $value);",
                     $config_content,
                     1
                 );
             }
         }
 
+        // Ensure proper line endings
+        $config_content = str_replace("\n", PHP_EOL, $config_content);
+
         if ( false === file_put_contents( $wp_config_path, $config_content ) ) {
             // Restore backup
-            copy( $backup_path, $wp_config_path );
-            unlink( $backup_path );
+            @copy( $backup_path, $wp_config_path );
+            @unlink( $backup_path );
             throw new Exception( esc_html__( 'Failed to write to wp-config.php', 'debug-log-tools' ) );
         }
 
-        unlink( $backup_path );
+        @unlink( $backup_path );
         return true;
     }
 

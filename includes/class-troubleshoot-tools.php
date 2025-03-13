@@ -183,4 +183,107 @@ class Troubleshoot_Tools {
 
         return esc_html__('Waiting for cron job to complete...', 'debug-log-tools');
     }
+
+    /**
+     * Get plugin data safely.
+     *
+     * @param string $plugin_file Path to the plugin file.
+     * @return array|false Plugin data array or false on failure.
+     */
+    private function get_plugin_data($plugin_file) {
+        if (!function_exists('get_plugin_data')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        
+        if (!function_exists('get_plugin_data')) {
+            return false;
+        }
+
+        return get_plugin_data($plugin_file);
+    }
+
+    /**
+     * Check file permissions.
+     *
+     * @param string $file_path Path to the file.
+     * @return array Array with status and message.
+     */
+    private function check_file_permissions($file_path) {
+        if (!file_exists($file_path)) {
+            return array(
+                'status' => 'error',
+                'message' => esc_html__('File does not exist.', 'debug-log-tools')
+            );
+        }
+
+        $permissions = fileperms($file_path);
+        $is_readable = is_readable($file_path);
+        $is_writable = is_writable($file_path);
+
+        return array(
+            'status' => ($is_readable && $is_writable) ? 'success' : 'warning',
+            'message' => sprintf(
+                esc_html__('Permissions: %s, Readable: %s, Writable: %s', 'debug-log-tools'),
+                substr(sprintf('%o', $permissions), -4),
+                $is_readable ? esc_html__('Yes', 'debug-log-tools') : esc_html__('No', 'debug-log-tools'),
+                $is_writable ? esc_html__('Yes', 'debug-log-tools') : esc_html__('No', 'debug-log-tools')
+            )
+        );
+    }
+
+    /**
+     * Run system diagnostics.
+     *
+     * @return array Array of diagnostic results.
+     */
+    public function run_diagnostics() {
+        $results = array();
+
+        // Check WordPress version
+        $results['wordpress_version'] = array(
+            'status' => 'success',
+            'message' => get_bloginfo('version')
+        );
+
+        // Check PHP version
+        $results['php_version'] = array(
+            'status' => version_compare(PHP_VERSION, '7.4', '>=') ? 'success' : 'warning',
+            'message' => PHP_VERSION
+        );
+
+        // Check wp-config.php
+        $wp_config_path = ABSPATH . 'wp-config.php';
+        $results['wp_config'] = $this->check_file_permissions($wp_config_path);
+
+        // Check debug log file
+        $debug_log_path = WP_CONTENT_DIR . '/debug.log';
+        $results['debug_log'] = $this->check_file_permissions($debug_log_path);
+
+        // Check plugin directory
+        $plugin_dir = plugin_dir_path(dirname(__FILE__));
+        $results['plugin_dir'] = $this->check_file_permissions($plugin_dir);
+
+        // Check active plugins
+        $active_plugins = get_option('active_plugins');
+        $results['active_plugins'] = array(
+            'status' => 'success',
+            'message' => count($active_plugins) . ' plugins active'
+        );
+
+        // Check memory limits
+        $memory_limit = ini_get('memory_limit');
+        $results['memory_limit'] = array(
+            'status' => 'success',
+            'message' => $memory_limit
+        );
+
+        // Check max execution time
+        $max_execution_time = ini_get('max_execution_time');
+        $results['max_execution_time'] = array(
+            'status' => 'success',
+            'message' => $max_execution_time . ' seconds'
+        );
+
+        return $results;
+    }
 } 

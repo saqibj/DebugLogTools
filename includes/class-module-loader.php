@@ -54,7 +54,7 @@ class Module_Loader {
      */
     private function load_module($module_dir) {
         $module_path = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/' . $module_dir;
-        $main_file = $module_path . '/class-' . str_replace('-', '-', $module_dir) . '.php';
+        $main_file = $module_path . '/class-' . str_replace('_', '-', $module_dir) . '.php';
 
         if (file_exists($main_file)) {
             require_once $main_file;
@@ -62,7 +62,18 @@ class Module_Loader {
             
             if (class_exists($class_name)) {
                 $this->modules[$module_dir] = new $class_name();
+            } else {
+                error_log(sprintf(
+                    'Debug Log Tools: Module class %s not found in file %s',
+                    $class_name,
+                    $main_file
+                ));
             }
+        } else {
+            error_log(sprintf(
+                'Debug Log Tools: Module file not found: %s',
+                $main_file
+            ));
         }
     }
 
@@ -73,7 +84,12 @@ class Module_Loader {
      * @return string Class name
      */
     private function get_module_class_name($module_dir) {
-        return str_replace(' ', '_', ucwords(str_replace('-', ' ', $module_dir)));
+        $words = explode('-', $module_dir);
+        $class_name = '';
+        foreach ($words as $word) {
+            $class_name .= ucfirst($word) . '_';
+        }
+        return rtrim($class_name, '_');
     }
 
     /**
