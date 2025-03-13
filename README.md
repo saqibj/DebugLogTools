@@ -1,6 +1,6 @@
 # Debug Log Tools
 
-**Version:** 3.0.2  
+**Version:** 3.1.0  
 **Author:** [Saqib Jawaid](https://github.com/saqibj)  
 **License:** GPL-3.0  
 **Tested up to WordPress 6.x**
@@ -61,6 +61,23 @@ This plugin includes the following security measures:
 - **File Size Protection:** Large files are handled safely to prevent memory issues.
 
 ## Changelog
+
+### 3.1.0
+- Added advanced debugging module with memory usage monitoring
+- Added query performance monitoring and visualization
+- Added error backtrace visualization
+- Added security monitoring module with event logging
+- Added notifications module for error alerts
+- Added performance monitoring module
+- Added modular architecture for better extensibility
+- Added dark mode support for all modules
+- Improved UI/UX with modern design
+- Enhanced error tracking and logging
+- Added real-time data visualization with charts
+- Added support for email and Slack notifications
+- Added security event monitoring and alerts
+- Added performance metrics tracking
+- Improved code organization and maintainability
 
 ### 3.0.2
 - Improved error handling for wp-config.php modifications

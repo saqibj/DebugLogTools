@@ -1,0 +1,224 @@
+/**
+ * Debug Log Debugging Styles
+ *
+ * @package DebugLogTools
+ */
+
+.debug-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.debug-controls {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.debug-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.debug-button-primary {
+    background: #2271b1;
+    color: #fff;
+}
+
+.debug-button-primary:hover {
+    background: #135e96;
+}
+
+.debug-button-danger {
+    background: #dc3232;
+    color: #fff;
+}
+
+.debug-button-danger:hover {
+    background: #b32d2e;
+}
+
+.auto-refresh-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auto-refresh-label {
+    cursor: pointer;
+}
+
+.debug-tabs {
+    margin-bottom: 30px;
+}
+
+.debug-tab-link {
+    display: inline-block;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: #646970;
+    border: 1px solid #c3c4c7;
+    border-bottom: none;
+    margin-right: 5px;
+    background: #f0f0f1;
+}
+
+.debug-tab-link.active {
+    background: #fff;
+    color: #1d2327;
+    border-bottom: 2px solid #fff;
+    margin-bottom: -1px;
+}
+
+.debug-tab-content {
+    display: none;
+    padding: 20px;
+    border: 1px solid #c3c4c7;
+    background: #fff;
+}
+
+.debug-tab-content.active {
+    display: block;
+}
+
+.memory-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.memory-stat {
+    background: #f0f6fc;
+    padding: 20px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.memory-stat-label {
+    color: #646970;
+    margin-bottom: 10px;
+}
+
+.memory-stat-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #2271b1;
+}
+
+.memory-warning {
+    background: #fcf9e8;
+    border-left: 4px solid #dba617;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.chart-container {
+    margin-bottom: 30px;
+    height: 300px;
+}
+
+.query-item,
+.backtrace-item {
+    background: #f6f7f7;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.query-time,
+.query-timestamp {
+    color: #646970;
+    font-size: 0.9em;
+    margin-bottom: 8px;
+}
+
+.query-sql,
+.backtrace-details {
+    background: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
+.backtrace-error {
+    color: #dc3232;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .debug-container {
+        background: #1d2327;
+        color: #f0f0f1;
+    }
+
+    .debug-tab-link {
+        background: #2c3338;
+        border-color: #2c3338;
+        color: #f0f0f1;
+    }
+
+    .debug-tab-link.active {
+        background: #1d2327;
+        color: #fff;
+    }
+
+    .debug-tab-content {
+        background: #1d2327;
+        border-color: #2c3338;
+    }
+
+    .memory-stat {
+        background: #2c3338;
+    }
+
+    .memory-stat-label {
+        color: #f0f0f1;
+    }
+
+    .memory-warning {
+        background: #2c3338;
+        border-color: #dba617;
+        color: #dba617;
+    }
+
+    .query-item,
+    .backtrace-item {
+        background: #2c3338;
+    }
+
+    .query-sql,
+    .backtrace-details {
+        background: #1d2327;
+        color: #f0f0f1;
+    }
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+    .memory-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .debug-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .debug-button {
+        width: 100%;
+    }
+} 

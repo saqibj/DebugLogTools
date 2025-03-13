@@ -1,0 +1,213 @@
+/**
+ * Debug Log Security Module Styles
+ *
+ * @package DebugLogTools
+ */
+
+.security-dashboard {
+    margin: 20px 0;
+}
+
+.security-stats {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.stat-box {
+    background: #f8f9fa;
+    border: 1px solid #e2e4e7;
+    border-radius: 4px;
+    padding: 15px;
+    text-align: center;
+}
+
+.stat-box h3 {
+    color: #1d2327;
+    font-size: 14px;
+    margin: 0 0 10px;
+}
+
+.stat-number {
+    color: #2271b1;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.security-tabs {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.nav-tab-wrapper {
+    border-bottom: 1px solid #ccd0d4;
+    margin: 0;
+    padding-top: 9px;
+    padding-bottom: 0;
+    line-height: inherit;
+}
+
+.nav-tab {
+    border: 1px solid #ccd0d4;
+    border-bottom: none;
+    background: #f0f0f1;
+    color: #646970;
+    font-size: 14px;
+    line-height: 1.71428571;
+    font-weight: 600;
+    margin-left: 0.5em;
+    padding: 5px 10px;
+    text-decoration: none;
+}
+
+.nav-tab:hover,
+.nav-tab:focus {
+    background-color: #fff;
+    color: #1d2327;
+}
+
+.nav-tab-active,
+.nav-tab-active:focus,
+.nav-tab-active:focus:active,
+.nav-tab-active:hover {
+    border-bottom: 1px solid #fff;
+    background: #fff;
+    color: #1d2327;
+}
+
+.tab-content {
+    padding: 20px;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+.form-table th {
+    width: 200px;
+}
+
+.form-table td fieldset label {
+    display: block;
+    margin: 0.25em 0;
+}
+
+.tablenav {
+    height: auto;
+    margin: 0 0 1em;
+    padding: 8px 0;
+}
+
+.tablenav .actions {
+    padding: 2px 0;
+}
+
+.tablenav select {
+    float: none;
+    margin: 0 4px;
+    vertical-align: middle;
+}
+
+.wp-list-table {
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.wp-list-table th {
+    font-weight: 600;
+    padding: 8px 10px;
+    line-height: 1.3;
+}
+
+.wp-list-table td {
+    padding: 8px 10px;
+    line-height: 1.5;
+    vertical-align: middle;
+}
+
+.wp-list-table tr:nth-child(odd) {
+    background-color: #f6f7f7;
+}
+
+/* Responsive styles */
+@media screen and (max-width: 782px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-table th {
+        width: 100%;
+        display: block;
+    }
+
+    .form-table td {
+        padding: 0;
+        margin-bottom: 15px;
+    }
+
+    .tablenav {
+        height: auto;
+    }
+
+    .tablenav .actions {
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    .tablenav select {
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+    }
+
+    .tablenav .button {
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+        text-align: center;
+    }
+
+    .wp-list-table {
+        display: block;
+    }
+
+    .wp-list-table thead,
+    .wp-list-table tfoot {
+        display: none;
+    }
+
+    .wp-list-table tbody {
+        display: block;
+    }
+
+    .wp-list-table tr {
+        display: block;
+        margin-bottom: 1.5em;
+    }
+
+    .wp-list-table td {
+        display: block;
+        text-align: right;
+        padding: 8px;
+    }
+
+    .wp-list-table td:before {
+        content: attr(data-label);
+        float: left;
+        font-weight: 600;
+    }
+} 
