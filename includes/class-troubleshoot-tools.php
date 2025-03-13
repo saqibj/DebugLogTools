@@ -5,6 +5,8 @@
  * @package DebugLogTools
  */
 
+namespace DebugLogTools;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -13,6 +15,13 @@ if (!defined('ABSPATH')) {
  * Class Troubleshoot_Tools
  */
 class Troubleshoot_Tools {
+
+    /**
+     * Initialize the troubleshoot tools
+     */
+    public function init() {
+        // Additional initialization if needed
+    }
 
     /**
      * Get system information

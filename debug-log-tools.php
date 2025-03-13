@@ -57,7 +57,12 @@ spl_autoload_register(function ($class) {
 
     // If the file exists, require it
     if (file_exists($file)) {
-        require $file;
+        require_once $file;
+    } else {
+        error_log(sprintf(
+            'Debug Log Tools: Class file not found: %s',
+            $file
+        ));
     }
 });
 
@@ -171,7 +176,9 @@ register_deactivation_hook(__FILE__, 'debug_log_tools_deactivate');
  * Enqueue plugin assets.
  */
 function debug_log_tools_enqueue_assets() {
+    $version = DEBUG_LOG_TOOLS_VERSION;
     $screen = get_current_screen();
+    
     if (!$screen || 'toplevel_page_debug-log-tools' !== $screen->id) {
         return;
     }
@@ -181,15 +188,24 @@ function debug_log_tools_enqueue_assets() {
         'debug-log-tools-admin',
         DEBUG_LOG_TOOLS_PLUGIN_URL . 'assets/css/admin.css',
         array(),
-        DEBUG_LOG_TOOLS_VERSION
+        $version
     );
 
     wp_enqueue_script(
         'debug-log-tools-admin',
         DEBUG_LOG_TOOLS_PLUGIN_URL . 'assets/js/admin.js',
         array('jquery'),
-        DEBUG_LOG_TOOLS_VERSION,
+        $version,
         true
+    );
+    
+    wp_localize_script(
+        'debug-log-tools-admin',
+        'debugLogTools',
+        array(
+            'nonce'   => wp_create_nonce('debug_log_tools_refresh'),
+            'ajaxurl' => admin_url('admin-ajax.php')
+        )
     );
 
     // Module-specific assets
@@ -202,13 +218,13 @@ function debug_log_tools_enqueue_assets() {
                     'debug-log-tools-debugging',
                     DEBUG_LOG_TOOLS_PLUGIN_URL . 'includes/modules/debugging/css/debugging.css',
                     array(),
-                    DEBUG_LOG_TOOLS_VERSION
+                    $version
                 );
                 wp_enqueue_script(
                     'debug-log-tools-debugging',
                     DEBUG_LOG_TOOLS_PLUGIN_URL . 'includes/modules/debugging/js/debugging.js',
-                    array('jquery'),
-                    DEBUG_LOG_TOOLS_VERSION,
+                    array('jquery', 'debug-log-tools-admin'),
+                    $version,
                     true
                 );
                 break;
@@ -218,13 +234,13 @@ function debug_log_tools_enqueue_assets() {
                     'debug-log-tools-security',
                     DEBUG_LOG_TOOLS_PLUGIN_URL . 'includes/modules/security/css/security.css',
                     array(),
-                    DEBUG_LOG_TOOLS_VERSION
+                    $version
                 );
                 wp_enqueue_script(
                     'debug-log-tools-security',
                     DEBUG_LOG_TOOLS_PLUGIN_URL . 'includes/modules/security/js/security.js',
-                    array('jquery'),
-                    DEBUG_LOG_TOOLS_VERSION,
+                    array('jquery', 'debug-log-tools-admin'),
+                    $version,
                     true
                 );
                 break;
@@ -295,73 +311,6 @@ function debug_log_tools_cleanup() {
 add_action('debug_log_tools_cleanup', 'debug_log_tools_cleanup');
 
 /**
- * Enqueue admin scripts and styles
- */
-function debug_log_tools_enqueue_assets() {
-    $version = DEBUG_LOG_TOOLS_VERSION;
-    $screen = get_current_screen();
-    
-    // Core plugin assets
-    wp_enqueue_style(
-        'debug-log-tools-css',
-        plugins_url( 'css/debug-log-tools.css', __FILE__ ),
-        array(),
-        $version
-    );
-    
-    wp_enqueue_script(
-        'debug-log-tools-js',
-        plugins_url( 'js/debug-log-tools.js', __FILE__ ),
-        array( 'jquery' ),
-        $version,
-        true
-    );
-    
-    wp_localize_script(
-        'debug-log-tools-js',
-        'debugLogTools',
-        array(
-            'nonce'   => wp_create_nonce( 'debug_log_tools_refresh' ),
-            'ajaxurl' => admin_url( 'admin-ajax.php' )
-        )
-    );
-
-    // Module-specific assets
-    if ($screen && strpos($screen->id, 'debug-log-tools') !== false) {
-        // Debugging module assets
-        wp_enqueue_style(
-            'debug-log-tools-debugging',
-            plugins_url('includes/modules/debugging/css/debugging.css', __FILE__),
-            array(),
-            $version
-        );
-        wp_enqueue_script(
-            'debug-log-tools-debugging',
-            plugins_url('includes/modules/debugging/js/debugging.js', __FILE__),
-            array('jquery', 'debug-log-tools-js'),
-            $version,
-            true
-        );
-
-        // Security module assets
-        wp_enqueue_style(
-            'debug-log-tools-security',
-            plugins_url('includes/modules/security/css/security.css', __FILE__),
-            array(),
-            $version
-        );
-        wp_enqueue_script(
-            'debug-log-tools-security',
-            plugins_url('includes/modules/security/js/security.js', __FILE__),
-            array('jquery', 'debug-log-tools-js'),
-            $version,
-            true
-        );
-    }
-}
-add_action('admin_enqueue_scripts', 'debug_log_tools_enqueue_assets');
-
-/**
  * AJAX handler for log refresh
  */
 function debug_log_tools_ajax_refresh() {
@@ -384,7 +333,7 @@ function debug_log_tools_ajax_refresh() {
 
 function debug_log_tools_get_log_contents($log_file) {
     // Try to create log file if it doesn't exist and debug is enabled
-    if (!file_exists($log_file) && Debug_Log_Manager::is_debug_enabled()) {
+    if (!file_exists($log_file)) {
         $wp_content_dir = dirname($log_file);
         if (is_writable($wp_content_dir)) {
             @touch($log_file);

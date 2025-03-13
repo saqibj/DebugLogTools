@@ -5,6 +5,8 @@
  * @package DebugLogTools
  */
 
+namespace DebugLogTools;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -26,6 +28,13 @@ class Module_Loader {
     public function __construct() {
         $this->load_modules();
         add_action('admin_menu', array($this, 'add_modules_page'));
+    }
+
+    /**
+     * Initialize the module loader
+     */
+    public function init() {
+        // Additional initialization if needed
     }
 
     /**
@@ -58,7 +67,7 @@ class Module_Loader {
 
         if (file_exists($main_file)) {
             require_once $main_file;
-            $class_name = $this->get_module_class_name($module_dir);
+            $class_name = 'DebugLogTools\\Modules\\' . $this->get_module_class_name($module_dir);
             
             if (class_exists($class_name)) {
                 $this->modules[$module_dir] = new $class_name();

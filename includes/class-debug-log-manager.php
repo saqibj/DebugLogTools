@@ -5,6 +5,8 @@
  * @package DebugLogTools
  */
 
+namespace DebugLogTools;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -19,6 +21,13 @@ class Debug_Log_Manager {
      */
     public function __construct() {
         add_action( 'admin_post_debug_log_tools_toggle', array( $this, 'handle_debug_toggle' ) );
+    }
+
+    /**
+     * Initialize the debug log manager
+     */
+    public function init() {
+        // Additional initialization if needed
     }
 
     /**
