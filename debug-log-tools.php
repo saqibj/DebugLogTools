@@ -37,11 +37,17 @@ define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
-// Autoloader
+// Direct includes for core classes
+require_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/class-module-loader.php';
+require_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/class-debug-log-manager.php';
+require_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/class-troubleshoot-tools.php';
+require_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/class-base-module.php';
+
+// Autoloader for module classes
 spl_autoload_register(function ($class) {
     // Project-specific namespace prefix
-    $prefix = 'DebugLogTools\\';
-    $base_dir = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/';
+    $prefix = 'DebugLogTools\\Modules\\';
+    $base_dir = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/';
 
     // Check if the class uses the namespace prefix
     $len = strlen($prefix);
@@ -52,42 +58,28 @@ spl_autoload_register(function ($class) {
     // Get the relative class name
     $relative_class = substr($class, $len);
     
-    // First, try WordPress naming convention (class-name-format.php)
-    $class_parts = explode('\\', $relative_class);
-    $class_name = end($class_parts);
+    // Extract module name
+    $words = explode('\\', $relative_class);
+    $class_name = end($words);
     
-    // Convert from CamelCase to kebab-case
-    $file_name = 'class-' . strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', str_replace('_', '-', $class_name)));
+    // Convert class name to file name (e.g., Debugging => class-debugging.php)
+    $file_name = 'class-' . strtolower($class_name) . '.php';
     
-    // Handle module classes
-    if (count($class_parts) > 1 && $class_parts[0] === 'Modules') {
-        // For module classes, use modules/name/class-name.php
-        $module_name = strtolower($class_parts[1]);
-        $file = $base_dir . 'modules/' . $module_name . '/' . $file_name . '.php';
-    } else {
-        // For core classes, use includes/class-name.php
-        $file = $base_dir . $file_name . '.php';
+    // For module classes, use modules/name/class-name.php format
+    // Example: DebugLogTools\Modules\Debugging => includes/modules/debugging/class-debugging.php
+    if (count($words) === 1) {
+        $module_name = strtolower($class_name);
+        $file = $base_dir . $module_name . '/' . $file_name;
+        
+        // Log the attempt
+        error_log("Debug Log Tools: Attempting to load module class from: " . $file);
+        
+        if (file_exists($file)) {
+            require_once $file;
+        } else {
+            error_log("Debug Log Tools: Module file not found: " . $file);
+        }
     }
-    
-    // If the file exists, require it
-    if (file_exists($file)) {
-        require_once $file;
-        return;
-    }
-    
-    // Fallback to PSR-4 style
-    $psr4_file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-    if (file_exists($psr4_file)) {
-        require_once $psr4_file;
-        return;
-    }
-    
-    error_log(sprintf(
-        'Debug Log Tools: Class %s not found. Tried files %s and %s',
-        $class,
-        $file,
-        $psr4_file
-    ));
 });
 
 /**

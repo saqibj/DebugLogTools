@@ -32,7 +32,7 @@ class Troubleshoot_Tools {
         global $wpdb;
 
         $info = array(
-            'wp_version' => get_bloginfo('version'),
+            'wp_version' => \get_bloginfo('version'),
             'php_version' => phpversion(),
             'mysql_version' => $wpdb->db_version(),
             'server_software' => isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'Unknown',
@@ -48,9 +48,9 @@ class Troubleshoot_Tools {
         );
 
         // Add multisite status
-        if (is_multisite()) {
+        if (\is_multisite()) {
             $info['multisite'] = 'Yes';
-            $info['network_sites'] = get_blog_count();
+            $info['network_sites'] = \get_blog_count();
         }
 
         return $info;
@@ -68,16 +68,16 @@ class Troubleshoot_Tools {
         if (version_compare(PHP_VERSION, '7.4', '<')) {
             $issues[] = array(
                 'type' => 'warning',
-                'message' => esc_html__('Your PHP version is outdated. WordPress recommends using PHP 7.4 or higher.', 'debug-log-tools')
+                'message' => \esc_html__('Your PHP version is outdated. WordPress recommends using PHP 7.4 or higher.', 'debug-log-tools')
             );
         }
 
         // Check memory limit
-        $memory_limit = wp_convert_hr_to_bytes(ini_get('memory_limit'));
+        $memory_limit = \wp_convert_hr_to_bytes(ini_get('memory_limit'));
         if ($memory_limit < 64 * 1024 * 1024) { // 64MB
             $issues[] = array(
                 'type' => 'warning',
-                'message' => esc_html__('Memory limit is low. Recommended minimum is 64MB.', 'debug-log-tools')
+                'message' => \esc_html__('Memory limit is low. Recommended minimum is 64MB.', 'debug-log-tools')
             );
         }
 
@@ -85,34 +85,34 @@ class Troubleshoot_Tools {
         if (file_exists(ABSPATH . 'wp-config-sample.php')) {
             $issues[] = array(
                 'type' => 'error',
-                'message' => esc_html__('wp-config-sample.php file exists. This should be removed in production.', 'debug-log-tools')
+                'message' => \esc_html__('wp-config-sample.php file exists. This should be removed in production.', 'debug-log-tools')
             );
         }
 
         // Check file permissions
-        $wp_content = WP_CONTENT_DIR;
+        $wp_content = \WP_CONTENT_DIR;
         if (file_exists($wp_content)) {
             $permissions = fileperms($wp_content) & 0777;
             if ($permissions & 0x0004) { // World readable
                 $issues[] = array(
                     'type' => 'warning',
-                    'message' => esc_html__('wp-content directory permissions are too open.', 'debug-log-tools')
+                    'message' => \esc_html__('wp-content directory permissions are too open.', 'debug-log-tools')
                 );
             }
         }
 
         // Check debug.log file
-        $log_file = WP_CONTENT_DIR . '/debug.log';
+        $log_file = \WP_CONTENT_DIR . '/debug.log';
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
             if (!file_exists($log_file)) {
                 $issues[] = array(
                     'type' => 'warning',
-                    'message' => esc_html__('Debug logging is enabled but debug.log file does not exist.', 'debug-log-tools')
+                    'message' => \esc_html__('Debug logging is enabled but debug.log file does not exist.', 'debug-log-tools')
                 );
             } elseif (file_exists($log_file) && !is_writable($log_file)) {
                 $issues[] = array(
                     'type' => 'error',
-                    'message' => esc_html__('debug.log file exists but is not writable.', 'debug-log-tools')
+                    'message' => \esc_html__('debug.log file exists but is not writable.', 'debug-log-tools')
                 );
             }
         }
@@ -133,21 +133,21 @@ class Troubleshoot_Tools {
         $active_plugins = array();
         
         // Get regular active plugins
-        $plugins = (array) get_option('active_plugins', array());
+        $plugins = (array) \get_option('active_plugins', array());
         
         // Add network active plugins for multisite
-        if (is_multisite()) {
-            $network_plugins = array_keys((array) get_site_option('active_sitewide_plugins', array()));
+        if (\is_multisite()) {
+            $network_plugins = array_keys((array) \get_site_option('active_sitewide_plugins', array()));
             $plugins = array_merge($plugins, $network_plugins);
         }
 
         foreach ($plugins as $plugin) {
-            $plugin_path = WP_PLUGIN_DIR . '/' . $plugin;
+            $plugin_path = \WP_PLUGIN_DIR . '/' . $plugin;
             if (!file_exists($plugin_path)) {
                 continue;
             }
             
-            $plugin_data = get_plugin_data($plugin_path);
+            $plugin_data = \get_plugin_data($plugin_path);
             if (!empty($plugin_data['Name'])) {
                 $active_plugins[] = array(
                     'name' => $plugin_data['Name'],
@@ -164,7 +164,7 @@ class Troubleshoot_Tools {
      * Handle cron test
      */
     public static function handle_cron_test() {
-        set_transient('debug_log_tools_cron_test_completed', time(), 15 * MINUTE_IN_SECONDS);
+        \set_transient('debug_log_tools_cron_test_completed', time(), 15 * MINUTE_IN_SECONDS);
     }
 
     /**
@@ -174,23 +174,23 @@ class Troubleshoot_Tools {
      */
     public static function test_wp_cron() {
         if (defined('DISABLE_WP_CRON') && DISABLE_WP_CRON) {
-            return esc_html__('WP Cron is disabled via DISABLE_WP_CRON constant.', 'debug-log-tools');
+            return \esc_html__('WP Cron is disabled via DISABLE_WP_CRON constant.', 'debug-log-tools');
         }
 
-        $cron_test = get_transient('debug_log_tools_cron_test');
-        $cron_completed = get_transient('debug_log_tools_cron_test_completed');
+        $cron_test = \get_transient('debug_log_tools_cron_test');
+        $cron_completed = \get_transient('debug_log_tools_cron_test_completed');
         
         if ($cron_completed !== false) {
             return true;
         }
 
         if ($cron_test === false) {
-            wp_schedule_single_event(time() - 1, 'debug_log_tools_cron_test');
-            set_transient('debug_log_tools_cron_test', time(), 5 * MINUTE_IN_SECONDS);
-            return esc_html__('Cron test scheduled. Check back in a few minutes.', 'debug-log-tools');
+            \wp_schedule_single_event(time() - 1, 'debug_log_tools_cron_test');
+            \set_transient('debug_log_tools_cron_test', time(), 5 * MINUTE_IN_SECONDS);
+            return \esc_html__('Cron test scheduled. Check back in a few minutes.', 'debug-log-tools');
         }
 
-        return esc_html__('Waiting for cron job to complete...', 'debug-log-tools');
+        return \esc_html__('Waiting for cron job to complete...', 'debug-log-tools');
     }
 
     /**
@@ -208,7 +208,7 @@ class Troubleshoot_Tools {
             return false;
         }
 
-        return get_plugin_data($plugin_file);
+        return \get_plugin_data($plugin_file);
     }
 
     /**
@@ -221,7 +221,7 @@ class Troubleshoot_Tools {
         if (!file_exists($file_path)) {
             return array(
                 'status' => 'error',
-                'message' => esc_html__('File does not exist.', 'debug-log-tools')
+                'message' => \esc_html__('File does not exist.', 'debug-log-tools')
             );
         }
 
@@ -232,10 +232,10 @@ class Troubleshoot_Tools {
         return array(
             'status' => ($is_readable && $is_writable) ? 'success' : 'warning',
             'message' => sprintf(
-                esc_html__('Permissions: %s, Readable: %s, Writable: %s', 'debug-log-tools'),
+                \esc_html__('Permissions: %s, Readable: %s, Writable: %s', 'debug-log-tools'),
                 substr(sprintf('%o', $permissions), -4),
-                $is_readable ? esc_html__('Yes', 'debug-log-tools') : esc_html__('No', 'debug-log-tools'),
-                $is_writable ? esc_html__('Yes', 'debug-log-tools') : esc_html__('No', 'debug-log-tools')
+                $is_readable ? \esc_html__('Yes', 'debug-log-tools') : \esc_html__('No', 'debug-log-tools'),
+                $is_writable ? \esc_html__('Yes', 'debug-log-tools') : \esc_html__('No', 'debug-log-tools')
             )
         );
     }
@@ -251,7 +251,7 @@ class Troubleshoot_Tools {
         // Check WordPress version
         $results['wordpress_version'] = array(
             'status' => 'success',
-            'message' => get_bloginfo('version')
+            'message' => \get_bloginfo('version')
         );
 
         // Check PHP version
@@ -265,15 +265,15 @@ class Troubleshoot_Tools {
         $results['wp_config'] = $this->check_file_permissions($wp_config_path);
 
         // Check debug log file
-        $debug_log_path = WP_CONTENT_DIR . '/debug.log';
+        $debug_log_path = \WP_CONTENT_DIR . '/debug.log';
         $results['debug_log'] = $this->check_file_permissions($debug_log_path);
 
         // Check plugin directory
-        $plugin_dir = plugin_dir_path(dirname(__FILE__));
+        $plugin_dir = \plugin_dir_path(dirname(__FILE__));
         $results['plugin_dir'] = $this->check_file_permissions($plugin_dir);
 
         // Check active plugins
-        $active_plugins = get_option('active_plugins');
+        $active_plugins = \get_option('active_plugins');
         $results['active_plugins'] = array(
             'status' => 'success',
             'message' => count($active_plugins) . ' plugins active'
