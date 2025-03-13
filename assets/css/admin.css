@@ -1,0 +1,101 @@
+/**
+ * Debug Log Tools Admin Styles
+ */
+
+/* Main container */
+.debug-log-tools-wrap {
+  margin: 20px 0;
+}
+
+/* Controls */
+.debug-log-tools-controls {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.debug-log-tools-controls label {
+  margin-right: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.debug-log-tools-controls input[type="checkbox"] {
+  margin-right: 5px;
+}
+
+/* Filters */
+.debug-log-tools-filters {
+  margin-bottom: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+/* Log content */
+.debug-log-tools-content {
+  background: #fff;
+  border: 1px solid #ccd0d4;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.debug-log-tools-log {
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  background: #f6f7f7;
+  padding: 15px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 500px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+/* Highlight log levels */
+.debug-log-tools-log .error { color: #dc3232; }
+.debug-log-tools-log .warning { color: #f56e28; }
+.debug-log-tools-log .notice { color: #00a0d2; }
+.debug-log-tools-log .info { color: #46b450; }
+
+/* Message when log is empty */
+.debug-log-empty {
+  padding: 15px;
+  background: #f6f7f7;
+  border-left: 4px solid #00a0d2;
+}
+
+/* Troubleshoot section */
+.debug-log-tools-troubleshoot {
+  margin-top: 20px;
+}
+
+/* System info table */
+.debug-log-tools-troubleshoot table {
+  margin-bottom: 30px;
+}
+
+/* Common issues list */
+.debug-log-tools-troubleshoot ul {
+  padding-left: 20px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .debug-log-tools-content {
+    background: #32373c;
+    border-color: #1d2327;
+  }
+  
+  .debug-log-tools-log {
+    background: #23282d;
+    color: #bbc8d4;
+  }
+  
+  .debug-log-empty {
+    background: #23282d;
+    color: #bbc8d4;
+  }
+} 

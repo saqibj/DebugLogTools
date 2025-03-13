@@ -410,16 +410,16 @@ function debug_log_tools_display() {
 }
 
 function debug_log_tools_display_troubleshoot() {
-    $system_info = Troubleshoot_Tools::get_system_info();
-    $issues = Troubleshoot_Tools::check_common_issues();
-    $active_plugins = Troubleshoot_Tools::get_active_plugins();
+    $system_info = \DebugLogTools\Troubleshoot_Tools::get_system_info();
+    $issues = \DebugLogTools\Troubleshoot_Tools::check_common_issues();
+    $active_plugins = \DebugLogTools\Troubleshoot_Tools::get_active_plugins();
     ?>
     <div class="debug-log-tools-troubleshoot">
         <h3><?php esc_html_e('System Information', 'debug-log-tools'); ?></h3>
         <table class="widefat striped">
             <?php foreach ($system_info as $key => $value): ?>
                 <tr>
-                    <td><strong><?php echo esc_html(ucwords(str_replace('_', ' ', $key))); ?></strong></td>
+                    <td><strong><?php echo esc_html($key); ?></strong></td>
                     <td><?php echo esc_html($value); ?></td>
                 </tr>
             <?php endforeach; ?>
@@ -468,7 +468,7 @@ function debug_log_tools_display_log() {
     $log_file = WP_CONTENT_DIR . '/debug.log';
     $log_exists = file_exists($log_file);
     $log_content = debug_log_tools_get_log_contents($log_file);
-    $debug_enabled = Debug_Log_Manager::is_debug_enabled();
+    $debug_enabled = \DebugLogTools\Debug_Log_Manager::is_debug_enabled();
     ?>
     <div class="debug-log-tools-wrap">
         <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
@@ -479,33 +479,47 @@ function debug_log_tools_display_log() {
                     <input type="checkbox" name="enable_debug_log" <?php checked($debug_enabled); ?>>
                     <?php esc_html_e('Enable Debug Logging', 'debug-log-tools'); ?>
                 </label>
-                <input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Changes', 'debug-log-tools'); ?>">
+                <button type="submit" class="button">
+                    <?php echo $debug_enabled 
+                        ? esc_html__('Disable Debug Log', 'debug-log-tools') 
+                        : esc_html__('Enable Debug Log', 'debug-log-tools'); ?>
+                </button>
+                <?php if ($log_exists): ?>
+                    <a href="<?php echo esc_url(admin_url('admin-post.php?action=debug_log_tools_clear&_wpnonce=' . wp_create_nonce('clear_debug_log'))); ?>" class="button">
+                        <?php esc_html_e('Clear Log', 'debug-log-tools'); ?>
+                    </a>
+                    <a href="<?php echo esc_url(admin_url('admin-post.php?action=debug_log_tools_download&_wpnonce=' . wp_create_nonce('download_debug_log'))); ?>" class="button">
+                        <?php esc_html_e('Download Log', 'debug-log-tools'); ?>
+                    </a>
+                <?php endif; ?>
             </div>
         </form>
 
-        <?php if (!$debug_enabled): ?>
-            <div class="notice notice-warning">
-                <p><?php esc_html_e('Debug logging is currently disabled. Enable it to start logging.', 'debug-log-tools'); ?></p>
-            </div>
-        <?php elseif (!$log_exists): ?>
-            <div class="notice notice-info">
-                <p><?php esc_html_e('Debug logging is enabled but no log file exists yet. The file will be created when the first error occurs.', 'debug-log-tools'); ?></p>
-                <p><?php esc_html_e('To test logging, try visiting a non-existent page on your site.', 'debug-log-tools'); ?></p>
-            </div>
-        <?php else: ?>
-            <div class="debug-log-tools-controls">
-                <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
-                    <input type="hidden" name="action" value="debug_log_tools_flush">
-                    <?php wp_nonce_field('flush_debug_log', 'debug_log_tools_nonce'); ?>
-                    <input type="submit" class="button" value="<?php esc_attr_e('Flush Log', 'debug-log-tools'); ?>">
-                </form>
-                <input type="text" id="debug-log-search" class="regular-text" 
-                       placeholder="<?php esc_attr_e('Search log...', 'debug-log-tools'); ?>">
-            </div>
-            
+        <?php if ($log_exists && !empty($log_content)): ?>
             <div class="debug-log-tools-content">
-                <pre><?php echo esc_html($log_content); ?></pre>
+                <div class="debug-log-tools-filters">
+                    <input type="text" id="debug-log-search" placeholder="<?php esc_attr_e('Search in log...', 'debug-log-tools'); ?>" class="regular-text">
+                    <select id="debug-log-level">
+                        <option value="all"><?php esc_html_e('All Levels', 'debug-log-tools'); ?></option>
+                        <option value="error"><?php esc_html_e('Errors', 'debug-log-tools'); ?></option>
+                        <option value="warning"><?php esc_html_e('Warnings', 'debug-log-tools'); ?></option>
+                        <option value="notice"><?php esc_html_e('Notices', 'debug-log-tools'); ?></option>
+                    </select>
+                </div>
+                <pre id="debug-log-content" class="debug-log-tools-log"><?php echo esc_html($log_content); ?></pre>
             </div>
+        <?php elseif ($debug_enabled && !$log_exists): ?>
+            <p class="debug-log-empty">
+                <?php esc_html_e('Debug logging is enabled, but the log file does not exist yet. It will be created when WordPress logs its first debug message.', 'debug-log-tools'); ?>
+            </p>
+        <?php elseif ($debug_enabled && empty($log_content)): ?>
+            <p class="debug-log-empty">
+                <?php esc_html_e('Debug logging is enabled, but the log file is empty.', 'debug-log-tools'); ?>
+            </p>
+        <?php else: ?>
+            <p class="debug-log-empty">
+                <?php esc_html_e('Debug logging is currently disabled. Enable it to start capturing debug information.', 'debug-log-tools'); ?>
+            </p>
         <?php endif; ?>
     </div>
     <?php
@@ -566,3 +580,26 @@ add_action('admin_notices', 'debug_log_tools_admin_notices');
 
 // Add AJAX handler
 add_action('wp_ajax_debug_log_tools_refresh', 'debug_log_tools_ajax_refresh');
+
+/**
+ * Enqueue admin scripts and styles.
+ */
+function debug_log_tools_admin_enqueue_scripts($hook) {
+    if ($hook === 'tools_page_debug-log-tools') {
+        wp_enqueue_style(
+            'debug-log-tools',
+            DEBUG_LOG_TOOLS_PLUGIN_URL . 'assets/css/admin.css',
+            array(),
+            DEBUG_LOG_TOOLS_VERSION
+        );
+        
+        wp_enqueue_script(
+            'debug-log-tools',
+            DEBUG_LOG_TOOLS_PLUGIN_URL . 'assets/js/admin.js',
+            array('jquery'),
+            DEBUG_LOG_TOOLS_VERSION,
+            true
+        );
+    }
+}
+add_action('admin_enqueue_scripts', 'debug_log_tools_admin_enqueue_scripts');
