@@ -90,6 +90,14 @@ Yes, but we recommend using it cautiously on production sites. Enable only the n
 
 ## Changelog
 
+### 3.1.2
+- Added handlers for clearing and downloading the debug log.
+- Fixed namespace issues for class references in the main plugin file.
+- Improved user interface for the debug log viewer, including search and filter functionality.
+- Enhanced admin notices to provide feedback on log clearing and download actions.
+- Updated CSS and JavaScript files for better styling and functionality.
+- Fixed various linter errors related to undefined functions by ensuring proper namespacing.
+
 ### 3.1.1
 - Fixed module loading issues
 - Improved module management
