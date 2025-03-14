@@ -25,11 +25,29 @@
   margin-right: 5px;
 }
 
+.debug-log-tools-controls .button-link-delete {
+  color: #dc3232;
+  border-color: #dc3232;
+}
+
+.debug-log-tools-controls .button-link-delete:hover,
+.debug-log-tools-controls .button-link-delete:focus {
+  color: #fff;
+  background: #dc3232;
+  border-color: #dc3232;
+}
+
 /* Filters */
 .debug-log-tools-filters {
   margin-bottom: 15px;
   display: flex;
   gap: 10px;
+  align-items: center;
+}
+
+.debug-log-tools-filters select,
+.debug-log-tools-filters input {
+  min-width: 200px;
 }
 
 /* Log content */
@@ -97,5 +115,30 @@
   .debug-log-empty {
     background: #23282d;
     color: #bbc8d4;
+  }
+  
+  .debug-log-tools-filters select,
+  .debug-log-tools-filters input {
+    background-color: #32373c;
+    color: #bbc8d4;
+    border-color: #1d2327;
+  }
+  
+  .debug-log-tools-filters select:focus,
+  .debug-log-tools-filters input:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+  }
+
+  .debug-log-tools-controls .button-link-delete {
+    color: #f55e5e;
+    border-color: #f55e5e;
+  }
+
+  .debug-log-tools-controls .button-link-delete:hover,
+  .debug-log-tools-controls .button-link-delete:focus {
+    color: #fff;
+    background: #f55e5e;
+    border-color: #f55e5e;
   }
 } 
