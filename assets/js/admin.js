@@ -2,11 +2,103 @@
  * Debug Log Tools Admin JavaScript
  */
 jQuery(document).ready(function($) {
+    // Auto-refresh log content every 30 seconds
+    var refreshInterval;
+    
+    function startAutoRefresh() {
+        refreshInterval = setInterval(refreshLogContent, 30000);
+    }
+    
+    function stopAutoRefresh() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+    }
+    
+    function refreshLogContent() {
+        $.ajax({
+            url: debugLogTools.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'debug_log_tools_refresh',
+                nonce: debugLogTools.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#debug-log-content').text(response.data);
+                    // Store as original content for filtering
+                    $('#debug-log-content').data('original-content', response.data);
+                    // Reapply filters if any are active
+                    if ($('#debug-log-search').val() || 
+                        $('#debug-log-level').val() !== 'all' || 
+                        $('#debug-log-plugin').val() !== 'all') {
+                        filterLog();
+                    }
+                }
+            }
+        });
+    }
+
+    // Start auto-refresh when page loads
+    startAutoRefresh();
+
     // Handle flush log button click
     $('#flush-log-button').on('click', function(e) {
         e.preventDefault();
         if (confirm(debugLogTools.i18n.confirmFlush)) {
-            $('#flush-log-form').submit();
+            stopAutoRefresh(); // Stop auto-refresh during operation
+            $.ajax({
+                url: debugLogTools.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'debug_log_tools_flush',
+                    nonce: debugLogTools.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#debug-log-content').empty().text('');
+                        $('#debug-log-content').data('original-content', '');
+                        showNotice('success', debugLogTools.i18n.flushSuccess);
+                    } else {
+                        showNotice('error', response.data);
+                    }
+                    startAutoRefresh(); // Restart auto-refresh
+                },
+                error: function() {
+                    showNotice('error', debugLogTools.i18n.flushError);
+                    startAutoRefresh(); // Restart auto-refresh
+                }
+            });
+        }
+    });
+
+    // Handle clear all log button click
+    $('#clear-all-log').on('click', function(e) {
+        e.preventDefault();
+        if (confirm(debugLogTools.i18n.confirmClear)) {
+            stopAutoRefresh(); // Stop auto-refresh during operation
+            $.ajax({
+                url: debugLogTools.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'debug_log_tools_clear',
+                    nonce: debugLogTools.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#debug-log-content').empty().text('');
+                        $('#debug-log-content').data('original-content', '');
+                        showNotice('success', debugLogTools.i18n.clearSuccess);
+                    } else {
+                        showNotice('error', response.data);
+                    }
+                    startAutoRefresh(); // Restart auto-refresh
+                },
+                error: function() {
+                    showNotice('error', debugLogTools.i18n.clearError);
+                    startAutoRefresh(); // Restart auto-refresh
+                }
+            });
         }
     });
 
@@ -14,13 +106,13 @@ jQuery(document).ready(function($) {
     $('#clear-filtered-log').on('click', function(e) {
         e.preventDefault();
         if (confirm(debugLogTools.i18n.confirmClearFiltered)) {
+            stopAutoRefresh(); // Stop auto-refresh during operation
             var currentContent = $('#debug-log-content').text();
             var originalContent = $('#debug-log-content').data('original-content');
             var newContent = originalContent.split('\n').filter(function(line) {
                 return !currentContent.includes(line);
             }).join('\n');
             
-            // Save the new content back to the log file
             $.ajax({
                 url: debugLogTools.ajaxurl,
                 type: 'POST',
@@ -31,7 +123,6 @@ jQuery(document).ready(function($) {
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Update the displayed content and original content
                         $('#debug-log-content').text(newContent).data('original-content', newContent);
                         // Reset filters
                         $('#debug-log-search').val('');
@@ -40,14 +131,15 @@ jQuery(document).ready(function($) {
                         // Hide the clear filtered button
                         $('#clear-filtered-log').hide();
                         $('#clear-all-log').show();
-                        // Show success message
                         showNotice('success', debugLogTools.i18n.clearFilteredSuccess);
                     } else {
                         showNotice('error', response.data);
                     }
+                    startAutoRefresh(); // Restart auto-refresh
                 },
                 error: function() {
                     showNotice('error', debugLogTools.i18n.clearFilteredError);
+                    startAutoRefresh(); // Restart auto-refresh
                 }
             });
         }
@@ -157,4 +249,12 @@ jQuery(document).ready(function($) {
     $('#debug-log-search').on('keyup', filterLog);
     $('#debug-log-level').on('change', filterLog);
     $('#debug-log-plugin').on('change', filterLog);
+
+    // Handle download button click
+    $('#download-log').on('click', function(e) {
+        // The download will be handled by the server-side code
+        // Just stop auto-refresh temporarily
+        stopAutoRefresh();
+        setTimeout(startAutoRefresh, 1000); // Resume after 1 second
+    });
 }); 

@@ -11,7 +11,7 @@
  * Plugin Name: Debug Log Tools
  * Plugin URI:  https://github.com/saqibj/debug-log-tools
  * Description: View, filter, and manage WordPress debug logs from your dashboard.
- * Version:     3.1.3
+ * Version:     3.1.4
  * Author:      Saqib Jawaid
  * Author URI:  https://github.com/saqibj
  * Text Domain: debug-log-tools
@@ -32,7 +32,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('DEBUG_LOG_TOOLS_VERSION', '3.1.3');
+define('DEBUG_LOG_TOOLS_VERSION', '3.1.4');
 define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -491,22 +491,18 @@ function debug_log_tools_display_log() {
                         : esc_html__('Enable Debug Log', 'debug-log-tools'); ?>
                 </button>
                 <?php if ($log_exists): ?>
-                    <a href="<?php echo esc_url(admin_url('admin-post.php?action=debug_log_tools_clear&_wpnonce=' . wp_create_nonce('clear_debug_log'))); ?>" class="button" id="clear-all-log">
+                    <button type="button" class="button" id="clear-all-log">
                         <?php esc_html_e('Clear Log', 'debug-log-tools'); ?>
-                    </a>
+                    </button>
                     <button type="button" class="button button-secondary" id="clear-filtered-log" style="display: none;">
                         <?php esc_html_e('Clear Filtered Entries', 'debug-log-tools'); ?>
                     </button>
-                    <a href="<?php echo esc_url(admin_url('admin-post.php?action=debug_log_tools_download&_wpnonce=' . wp_create_nonce('download_debug_log'))); ?>" class="button">
+                    <a href="#" class="button" id="download-log">
                         <?php esc_html_e('Download Log', 'debug-log-tools'); ?>
                     </a>
                     <button type="button" class="button button-link-delete" id="flush-log-button">
                         <?php esc_html_e('Flush Log', 'debug-log-tools'); ?>
                     </button>
-                    <form id="flush-log-form" method="post" action="<?php echo admin_url('admin-post.php'); ?>" style="display: none;">
-                        <input type="hidden" name="action" value="debug_log_tools_flush">
-                        <?php wp_nonce_field('flush_debug_log', 'debug_log_tools_nonce'); ?>
-                    </form>
                 <?php endif; ?>
             </div>
         </form>
@@ -566,64 +562,57 @@ function debug_log_tools_admin_menu() {
 }
 add_action('admin_menu', 'debug_log_tools_admin_menu');
 
-// Flush Log Function
-function debug_log_tools_flush_log() {
+/**
+ * AJAX handler for flushing the log
+ */
+function debug_log_tools_ajax_flush() {
+    check_ajax_referer('debug_log_tools_refresh', 'nonce');
+    
     if (!current_user_can('manage_options')) {
-        wp_die(__('Unauthorized access', 'debug-log-tools'));
-    }
-
-    if (!isset($_POST['debug_log_tools_nonce']) || !wp_verify_nonce($_POST['debug_log_tools_nonce'], 'flush_debug_log')) {
-        wp_die(__('Security check failed', 'debug-log-tools'));
+        wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
     }
 
     $log_file = WP_CONTENT_DIR . '/debug.log';
-    if (file_exists($log_file)) {
-        file_put_contents($log_file, ''); // Clear log
+    if (!file_exists($log_file) || !is_writable($log_file)) {
+        wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
     }
 
-    wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&flushed=1'));
-    exit;
+    $result = file_put_contents($log_file, '');
+    if ($result === false) {
+        wp_send_json_error(__('Failed to flush log file.', 'debug-log-tools'));
+    }
+
+    wp_send_json_success(__('Log file flushed successfully.', 'debug-log-tools'));
 }
-add_action('admin_post_debug_log_tools_flush', 'debug_log_tools_flush_log');
+add_action('wp_ajax_debug_log_tools_flush', 'debug_log_tools_ajax_flush');
 
 /**
- * Clear the debug log file
+ * AJAX handler for clearing the log
  */
-function debug_log_tools_clear_log() {
+function debug_log_tools_ajax_clear() {
+    check_ajax_referer('debug_log_tools_refresh', 'nonce');
+    
     if (!current_user_can('manage_options')) {
-        wp_die(__('Unauthorized access', 'debug-log-tools'));
-    }
-
-    if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'clear_debug_log')) {
-        wp_die(__('Security check failed', 'debug-log-tools'));
+        wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
     }
 
     $log_file = WP_CONTENT_DIR . '/debug.log';
-    
-    // Check if file exists
     if (!file_exists($log_file)) {
-        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&clear_error=1'));
-        exit;
-    }
-    
-    // Check if file is writable
-    if (!is_writable($log_file)) {
-        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&clear_error=2'));
-        exit;
-    }
-    
-    // Try to clear the log
-    $result = @file_put_contents($log_file, '');
-    if ($result === false) {
-        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&clear_error=3'));
-        exit;
+        wp_send_json_error(__('Log file does not exist.', 'debug-log-tools'));
     }
 
-    // Success
-    wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&cleared=1'));
-    exit;
+    if (!is_writable($log_file)) {
+        wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
+    }
+
+    $result = file_put_contents($log_file, '');
+    if ($result === false) {
+        wp_send_json_error(__('Failed to clear log file.', 'debug-log-tools'));
+    }
+
+    wp_send_json_success(__('Log file cleared successfully.', 'debug-log-tools'));
 }
-add_action('admin_post_debug_log_tools_clear', 'debug_log_tools_clear_log');
+add_action('wp_ajax_debug_log_tools_clear', 'debug_log_tools_ajax_clear');
 
 /**
  * Download the debug log file
@@ -750,6 +739,26 @@ function debug_log_tools_admin_enqueue_scripts($hook) {
             DEBUG_LOG_TOOLS_VERSION,
             true
         );
+
+        wp_localize_script(
+            'debug-log-tools',
+            'debugLogTools',
+            array(
+                'nonce'   => wp_create_nonce('debug_log_tools_refresh'),
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'i18n'    => array(
+                    'confirmFlush' => __('Are you sure you want to flush the debug log? This will permanently remove all log entries and cannot be undone.', 'debug-log-tools'),
+                    'confirmClear' => __('Are you sure you want to clear the debug log? This will permanently remove all log entries and cannot be undone.', 'debug-log-tools'),
+                    'confirmClearFiltered' => __('Are you sure you want to clear the filtered log entries? This will permanently remove all currently filtered entries and cannot be undone.', 'debug-log-tools'),
+                    'flushSuccess' => __('Debug log flushed successfully.', 'debug-log-tools'),
+                    'flushError' => __('Error: Failed to flush debug log.', 'debug-log-tools'),
+                    'clearSuccess' => __('Debug log cleared successfully.', 'debug-log-tools'),
+                    'clearError' => __('Error: Failed to clear debug log.', 'debug-log-tools'),
+                    'clearFilteredSuccess' => __('Filtered log entries have been cleared successfully.', 'debug-log-tools'),
+                    'clearFilteredError' => __('Error: Failed to clear filtered log entries.', 'debug-log-tools')
+                )
+            )
+        );
     }
 }
 add_action('admin_enqueue_scripts', 'debug_log_tools_admin_enqueue_scripts');
@@ -783,3 +792,341 @@ function debug_log_tools_update_log() {
     wp_send_json_success();
 }
 add_action('wp_ajax_debug_log_tools_update', 'debug_log_tools_update_log');
+
+/**
+ * Main plugin class to handle all functionality
+ */
+class Debug_Log_Tools_Admin {
+    /**
+     * Instance of this class
+     */
+    private static $instance = null;
+
+    /**
+     * Get an instance of this class
+     */
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    /**
+     * Constructor
+     */
+    private function __construct() {
+        add_action('admin_menu', array($this, 'add_admin_menu'));
+        add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+        add_action('wp_ajax_debug_log_tools_refresh', array($this, 'ajax_refresh'));
+        add_action('wp_ajax_debug_log_tools_flush', array($this, 'ajax_flush'));
+        add_action('wp_ajax_debug_log_tools_clear', array($this, 'ajax_clear'));
+        add_action('wp_ajax_debug_log_tools_update', array($this, 'ajax_update'));
+        add_action('admin_notices', array($this, 'admin_notices'));
+    }
+
+    /**
+     * Add admin menu item
+     */
+    public function add_admin_menu() {
+        add_menu_page(
+            __('Debug Log Tools', 'debug-log-tools'),
+            __('Debug Log Tools', 'debug-log-tools'),
+            'manage_options',
+            'debug-log-tools',
+            array($this, 'display_page'),
+            'dashicons-text-page',
+            80
+        );
+    }
+
+    /**
+     * Enqueue admin assets
+     */
+    public function enqueue_assets($hook) {
+        if ('toplevel_page_debug-log-tools' !== $hook) {
+            return;
+        }
+
+        wp_enqueue_style(
+            'debug-log-tools',
+            DEBUG_LOG_TOOLS_PLUGIN_URL . 'assets/css/admin.css',
+            array(),
+            DEBUG_LOG_TOOLS_VERSION
+        );
+        
+        wp_enqueue_script(
+            'debug-log-tools',
+            DEBUG_LOG_TOOLS_PLUGIN_URL . 'assets/js/admin.js',
+            array('jquery'),
+            DEBUG_LOG_TOOLS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'debug-log-tools',
+            'debugLogTools',
+            array(
+                'nonce'   => wp_create_nonce('debug_log_tools_refresh'),
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'i18n'    => array(
+                    'confirmFlush' => __('Are you sure you want to flush the debug log? This will permanently remove all log entries and cannot be undone.', 'debug-log-tools'),
+                    'confirmClear' => __('Are you sure you want to clear the debug log? This will permanently remove all log entries and cannot be undone.', 'debug-log-tools'),
+                    'confirmClearFiltered' => __('Are you sure you want to clear the filtered log entries? This will permanently remove all currently filtered entries and cannot be undone.', 'debug-log-tools'),
+                    'flushSuccess' => __('Debug log flushed successfully.', 'debug-log-tools'),
+                    'flushError' => __('Error: Failed to flush debug log.', 'debug-log-tools'),
+                    'clearSuccess' => __('Debug log cleared successfully.', 'debug-log-tools'),
+                    'clearError' => __('Error: Failed to clear debug log.', 'debug-log-tools'),
+                    'clearFilteredSuccess' => __('Filtered log entries have been cleared successfully.', 'debug-log-tools'),
+                    'clearFilteredError' => __('Error: Failed to clear filtered log entries.', 'debug-log-tools')
+                )
+            )
+        );
+    }
+
+    /**
+     * Display the main plugin page
+     */
+    public function display_page() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'log';
+        ?>
+        <div class="wrap">
+            <h1><?php echo esc_html__('Debug Log Tools', 'debug-log-tools'); ?></h1>
+            
+            <h2 class="nav-tab-wrapper">
+                <a href="?page=debug-log-tools&tab=log" 
+                   class="nav-tab <?php echo $active_tab == 'log' ? 'nav-tab-active' : ''; ?>">
+                    <?php esc_html_e('Debug Log', 'debug-log-tools'); ?>
+                </a>
+                <a href="?page=debug-log-tools&tab=troubleshoot" 
+                   class="nav-tab <?php echo $active_tab == 'troubleshoot' ? 'nav-tab-active' : ''; ?>">
+                    <?php esc_html_e('Troubleshoot', 'debug-log-tools'); ?>
+                </a>
+            </h2>
+
+            <?php
+            if ($active_tab == 'troubleshoot') {
+                $this->display_troubleshoot();
+            } else {
+                $this->display_log();
+            }
+            ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Display the log viewer
+     */
+    public function display_log() {
+        $log_file = WP_CONTENT_DIR . '/debug.log';
+        $log_exists = file_exists($log_file);
+        $log_content = $this->get_log_contents($log_file);
+        $debug_enabled = \DebugLogTools\Debug_Log_Manager::is_debug_enabled();
+        
+        include_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'views/log-viewer.php';
+    }
+
+    /**
+     * Display the troubleshoot page
+     */
+    public function display_troubleshoot() {
+        $system_info = \DebugLogTools\Troubleshoot_Tools::get_system_info();
+        $issues = \DebugLogTools\Troubleshoot_Tools::check_common_issues();
+        $active_plugins = \DebugLogTools\Troubleshoot_Tools::get_active_plugins();
+        
+        include_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'views/troubleshoot.php';
+    }
+
+    /**
+     * Get log file contents
+     */
+    public function get_log_contents($log_file) {
+        if (!file_exists($log_file)) {
+            $wp_content_dir = dirname($log_file);
+            if (is_writable($wp_content_dir)) {
+                @touch($log_file);
+                @chmod($log_file, 0644);
+            }
+        }
+
+        if (!file_exists($log_file)) {
+            return '';
+        }
+
+        $size = filesize($log_file);
+        $max_size = 1024 * 1024; // 1MB
+
+        $handle = fopen($log_file, 'r');
+        if ($size > $max_size) {
+            fseek($handle, -$max_size, SEEK_END);
+            // Skip first incomplete line
+            fgets($handle);
+        }
+        $contents = fread($handle, $max_size);
+        fclose($handle);
+        
+        return $contents;
+    }
+
+    /**
+     * AJAX handler for refreshing log content
+     */
+    public function ajax_refresh() {
+        check_ajax_referer('debug_log_tools_refresh', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
+        }
+
+        $log_file = WP_CONTENT_DIR . '/debug.log';
+        if (file_exists($log_file)) {
+            $contents = $this->get_log_contents($log_file);
+            if (false === $contents) {
+                wp_send_json_error(__('Error reading log file.', 'debug-log-tools'));
+            }
+            wp_send_json_success(esc_html($contents));
+        }
+        wp_send_json_error(__('Log file not found.', 'debug-log-tools'));
+    }
+
+    /**
+     * AJAX handler for flushing the log
+     */
+    public function ajax_flush() {
+        check_ajax_referer('debug_log_tools_refresh', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
+        }
+
+        $log_file = WP_CONTENT_DIR . '/debug.log';
+        if (!file_exists($log_file) || !is_writable($log_file)) {
+            wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
+        }
+
+        $result = file_put_contents($log_file, '');
+        if ($result === false) {
+            wp_send_json_error(__('Failed to flush log file.', 'debug-log-tools'));
+        }
+
+        wp_send_json_success(__('Log file flushed successfully.', 'debug-log-tools'));
+    }
+
+    /**
+     * AJAX handler for clearing the log
+     */
+    public function ajax_clear() {
+        check_ajax_referer('debug_log_tools_refresh', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
+        }
+
+        $log_file = WP_CONTENT_DIR . '/debug.log';
+        if (!file_exists($log_file)) {
+            wp_send_json_error(__('Log file does not exist.', 'debug-log-tools'));
+        }
+
+        if (!is_writable($log_file)) {
+            wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
+        }
+
+        $result = file_put_contents($log_file, '');
+        if ($result === false) {
+            wp_send_json_error(__('Failed to clear log file.', 'debug-log-tools'));
+        }
+
+        wp_send_json_success(__('Log file cleared successfully.', 'debug-log-tools'));
+    }
+
+    /**
+     * AJAX handler for updating log content
+     */
+    public function ajax_update() {
+        check_ajax_referer('debug_log_tools_refresh', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
+        }
+
+        if (!isset($_POST['content'])) {
+            wp_send_json_error(__('No content provided.', 'debug-log-tools'));
+        }
+
+        $log_file = WP_CONTENT_DIR . '/debug.log';
+        if (!file_exists($log_file) || !is_writable($log_file)) {
+            wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
+        }
+
+        $content = wp_unslash($_POST['content']);
+        $result = file_put_contents($log_file, $content);
+        
+        if ($result === false) {
+            wp_send_json_error(__('Failed to update log file.', 'debug-log-tools'));
+        }
+
+        wp_send_json_success();
+    }
+
+    /**
+     * Display admin notices
+     */
+    public function admin_notices() {
+        if (isset($_GET['debug_updated'])) {
+            $status = $_GET['debug_updated'] === '1' ? 'enabled' : 'disabled';
+            $message = sprintf(
+                /* translators: %s: debug status */
+                esc_html__('Debug logging has been %s. You may need to reload the page to see the changes.', 'debug-log-tools'),
+                $status
+            );
+            echo '<div class="notice notice-success is-dismissible"><p>' . $message . '</p></div>';
+        }
+
+        if (isset($_GET['flushed']) && $_GET['flushed'] == '1') {
+            echo '<div class="notice notice-success is-dismissible"><p>' . 
+                 esc_html__('Debug log flushed successfully. All log entries have been permanently removed.', 'debug-log-tools') . 
+                 '</p></div>';
+        }
+        
+        if (isset($_GET['cleared']) && $_GET['cleared'] == '1') {
+            echo '<div class="notice notice-success is-dismissible"><p>' . 
+                 esc_html__('Debug log cleared successfully.', 'debug-log-tools') . 
+                 '</p></div>';
+        }
+        
+        if (isset($_GET['clear_error'])) {
+            $error_code = intval($_GET['clear_error']);
+            $error_message = esc_html__('Error: Could not clear debug log.', 'debug-log-tools');
+            
+            switch ($error_code) {
+                case 1:
+                    $error_message = esc_html__('Error: Debug log file does not exist.', 'debug-log-tools');
+                    break;
+                case 2:
+                    $error_message = esc_html__('Error: Debug log file is not writable. Please check file permissions.', 'debug-log-tools');
+                    break;
+                case 3:
+                    $error_message = esc_html__('Error: Failed to write to debug log file.', 'debug-log-tools');
+                    break;
+            }
+            
+            echo '<div class="notice notice-error is-dismissible"><p>' . $error_message . '</p></div>';
+        }
+        
+        if (isset($_GET['download_error']) && $_GET['download_error'] == '1') {
+            echo '<div class="notice notice-error is-dismissible"><p>' . 
+                 esc_html__('Error: Debug log file does not exist or could not be accessed.', 'debug-log-tools') . 
+                 '</p></div>';
+        }
+    }
+}
+
+// Initialize the plugin
+add_action('plugins_loaded', function() {
+    Debug_Log_Tools_Admin::get_instance();
+});
