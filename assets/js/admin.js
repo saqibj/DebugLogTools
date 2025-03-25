@@ -44,105 +44,111 @@ jQuery(document).ready(function($) {
 
     // Handle flush log button click
     $('#flush-log-button').on('click', function(e) {
-        e.preventDefault();
-        if (confirm(debugLogTools.i18n.confirmFlush)) {
-            stopAutoRefresh(); // Stop auto-refresh during operation
-            $.ajax({
-                url: debugLogTools.ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'debug_log_tools_flush',
-                    nonce: debugLogTools.nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('#debug-log-content').empty().text('');
-                        $('#debug-log-content').data('original-content', '');
-                        showNotice('success', debugLogTools.i18n.flushSuccess);
-                    } else {
-                        showNotice('error', response.data);
-                    }
-                    startAutoRefresh(); // Restart auto-refresh
-                },
-                error: function() {
-                    showNotice('error', debugLogTools.i18n.flushError);
-                    startAutoRefresh(); // Restart auto-refresh
-                }
-            });
+        if (!confirm(debugLogTools.i18n.confirmFlush)) {
+            e.preventDefault();
+            return;
         }
+        
+        stopAutoRefresh(); // Stop auto-refresh during operation
+        $.ajax({
+            url: debugLogTools.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'debug_log_tools_flush',
+                nonce: debugLogTools.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#debug-log-content').empty().text('');
+                    $('#debug-log-content').data('original-content', '');
+                    showNotice('success', debugLogTools.i18n.flushSuccess);
+                } else {
+                    showNotice('error', response.data);
+                }
+                startAutoRefresh(); // Restart auto-refresh
+            },
+            error: function() {
+                showNotice('error', debugLogTools.i18n.flushError);
+                startAutoRefresh(); // Restart auto-refresh
+            }
+        });
     });
 
     // Handle clear all log button click
     $('#clear-all-log').on('click', function(e) {
-        e.preventDefault();
-        if (confirm(debugLogTools.i18n.confirmClear)) {
-            stopAutoRefresh(); // Stop auto-refresh during operation
-            $.ajax({
-                url: debugLogTools.ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'debug_log_tools_clear',
-                    nonce: debugLogTools.nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('#debug-log-content').empty().text('');
-                        $('#debug-log-content').data('original-content', '');
-                        showNotice('success', debugLogTools.i18n.clearSuccess);
-                    } else {
-                        showNotice('error', response.data);
-                    }
-                    startAutoRefresh(); // Restart auto-refresh
-                },
-                error: function() {
-                    showNotice('error', debugLogTools.i18n.clearError);
-                    startAutoRefresh(); // Restart auto-refresh
-                }
-            });
+        if (!confirm(debugLogTools.i18n.confirmClear)) {
+            e.preventDefault();
+            return;
         }
+        
+        stopAutoRefresh(); // Stop auto-refresh during operation
+        $.ajax({
+            url: debugLogTools.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'debug_log_tools_clear',
+                nonce: debugLogTools.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#debug-log-content').empty().text('');
+                    $('#debug-log-content').data('original-content', '');
+                    showNotice('success', debugLogTools.i18n.clearSuccess);
+                } else {
+                    showNotice('error', response.data);
+                }
+                startAutoRefresh(); // Restart auto-refresh
+            },
+            error: function() {
+                showNotice('error', debugLogTools.i18n.clearError);
+                startAutoRefresh(); // Restart auto-refresh
+            }
+        });
     });
 
     // Handle clear filtered entries button click
     $('#clear-filtered-log').on('click', function(e) {
-        e.preventDefault();
-        if (confirm(debugLogTools.i18n.confirmClearFiltered)) {
-            stopAutoRefresh(); // Stop auto-refresh during operation
-            var currentContent = $('#debug-log-content').text();
-            var originalContent = $('#debug-log-content').data('original-content');
-            var newContent = originalContent.split('\n').filter(function(line) {
-                return !currentContent.includes(line);
-            }).join('\n');
-            
-            $.ajax({
-                url: debugLogTools.ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'debug_log_tools_update',
-                    nonce: debugLogTools.nonce,
-                    content: newContent
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('#debug-log-content').text(newContent).data('original-content', newContent);
-                        // Reset filters
-                        $('#debug-log-search').val('');
-                        $('#debug-log-level').val('all');
-                        $('#debug-log-plugin').val('all');
-                        // Hide the clear filtered button
-                        $('#clear-filtered-log').hide();
-                        $('#clear-all-log').show();
-                        showNotice('success', debugLogTools.i18n.clearFilteredSuccess);
-                    } else {
-                        showNotice('error', response.data);
-                    }
-                    startAutoRefresh(); // Restart auto-refresh
-                },
-                error: function() {
-                    showNotice('error', debugLogTools.i18n.clearFilteredError);
-                    startAutoRefresh(); // Restart auto-refresh
-                }
-            });
+        if (!confirm(debugLogTools.i18n.confirmClearFiltered)) {
+            e.preventDefault();
+            return;
         }
+        
+        stopAutoRefresh(); // Stop auto-refresh during operation
+        var currentContent = $('#debug-log-content').text();
+        var originalContent = $('#debug-log-content').data('original-content');
+        var newContent = originalContent.split('\n').filter(function(line) {
+            return !currentContent.includes(line);
+        }).join('\n');
+        
+        $.ajax({
+            url: debugLogTools.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'debug_log_tools_update',
+                nonce: debugLogTools.nonce,
+                content: newContent
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#debug-log-content').text(newContent).data('original-content', newContent);
+                    // Reset filters
+                    $('#debug-log-search').val('');
+                    $('#debug-log-level').val('all');
+                    $('#debug-log-plugin').val('all');
+                    // Hide the clear filtered button
+                    $('#clear-filtered-log').hide();
+                    $('#clear-all-log').show();
+                    showNotice('success', debugLogTools.i18n.clearFilteredSuccess);
+                } else {
+                    showNotice('error', response.data);
+                }
+                startAutoRefresh(); // Restart auto-refresh
+            },
+            error: function() {
+                showNotice('error', debugLogTools.i18n.clearFilteredError);
+                startAutoRefresh(); // Restart auto-refresh
+            }
+        });
     });
 
     // Show notification message
@@ -257,4 +263,19 @@ jQuery(document).ready(function($) {
         stopAutoRefresh();
         setTimeout(startAutoRefresh, 1000); // Resume after 1 second
     });
+
+    // Add confirmation for Enable/Disable toggle
+    const debugToggleForm = document.querySelector('form[action*="debug_log_tools_toggle"]');
+    if (debugToggleForm) {
+        debugToggleForm.addEventListener('submit', function(e) {
+            const isEnabled = document.querySelector('[name="enable_debug_log"]').checked;
+            const message = isEnabled 
+                ? 'Are you sure you want to ENABLE debug logging? This will start recording all debug information.'
+                : 'Are you sure you want to DISABLE debug logging? This will stop recording debug information.';
+            
+            if (!confirm(message)) {
+                e.preventDefault();
+            }
+        });
+    }
 }); 

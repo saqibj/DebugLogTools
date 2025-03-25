@@ -11,7 +11,7 @@
  * Plugin Name: Debug Log Tools
  * Plugin URI:  https://github.com/saqibj/debug-log-tools
  * Description: View, filter, and manage WordPress debug logs from your dashboard.
- * Version:     3.1.4
+ * Version:     3.1.6
  * Author:      Saqib Jawaid
  * Author URI:  https://github.com/saqibj
  * Text Domain: debug-log-tools
@@ -32,7 +32,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('DEBUG_LOG_TOOLS_VERSION', '3.1.4');
+define('DEBUG_LOG_TOOLS_VERSION', '3.1.6');
 define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -206,7 +206,7 @@ function debug_log_tools_enqueue_assets() {
         array(),
         $version
     );
-
+    
     wp_enqueue_script(
         'debug-log-tools-admin',
         DEBUG_LOG_TOOLS_PLUGIN_URL . 'assets/js/admin.js',
@@ -566,23 +566,27 @@ add_action('admin_menu', 'debug_log_tools_admin_menu');
  * AJAX handler for flushing the log
  */
 function debug_log_tools_ajax_flush() {
-    check_ajax_referer('debug_log_tools_refresh', 'nonce');
-    
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
-    }
+    try {
+        check_ajax_referer('debug_log_tools_refresh', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            throw new Exception('Unauthorized access');
+        }
 
-    $log_file = WP_CONTENT_DIR . '/debug.log';
-    if (!file_exists($log_file) || !is_writable($log_file)) {
-        wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
-    }
+        $log_file = WP_CONTENT_DIR . '/debug.log';
+        if (!file_exists($log_file) || !is_writable($log_file)) {
+            throw new Exception('Log file is not writable');
+        }
 
-    $result = file_put_contents($log_file, '');
-    if ($result === false) {
-        wp_send_json_error(__('Failed to flush log file.', 'debug-log-tools'));
-    }
+        $result = file_put_contents($log_file, '');
+        if ($result === false) {
+            throw new Exception('Failed to flush log file');
+        }
 
-    wp_send_json_success(__('Log file flushed successfully.', 'debug-log-tools'));
+        wp_send_json_success('Log file flushed successfully');
+    } catch (Exception $e) {
+        wp_send_json_error($e->getMessage());
+    }
 }
 add_action('wp_ajax_debug_log_tools_flush', 'debug_log_tools_ajax_flush');
 
@@ -998,23 +1002,27 @@ class Debug_Log_Tools_Admin {
      * AJAX handler for flushing the log
      */
     public function ajax_flush() {
-        check_ajax_referer('debug_log_tools_refresh', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
-        }
+        try {
+            check_ajax_referer('debug_log_tools_refresh', 'nonce');
+            
+            if (!current_user_can('manage_options')) {
+                throw new Exception('Unauthorized access');
+            }
 
-        $log_file = WP_CONTENT_DIR . '/debug.log';
-        if (!file_exists($log_file) || !is_writable($log_file)) {
-            wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
-        }
+            $log_file = WP_CONTENT_DIR . '/debug.log';
+            if (!file_exists($log_file) || !is_writable($log_file)) {
+                throw new Exception('Log file is not writable');
+            }
 
-        $result = file_put_contents($log_file, '');
-        if ($result === false) {
-            wp_send_json_error(__('Failed to flush log file.', 'debug-log-tools'));
-        }
+            $result = file_put_contents($log_file, '');
+            if ($result === false) {
+                throw new Exception('Failed to flush log file');
+            }
 
-        wp_send_json_success(__('Log file flushed successfully.', 'debug-log-tools'));
+            wp_send_json_success('Log file flushed successfully');
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage());
+        }
     }
 
     /**
@@ -1130,3 +1138,69 @@ class Debug_Log_Tools_Admin {
 add_action('plugins_loaded', function() {
     Debug_Log_Tools_Admin::get_instance();
 });
+
+// Add this after the activation hook
+add_action('admin_post_debug_log_tools_toggle', 'debug_log_tools_handle_toggle');
+
+function debug_log_tools_handle_toggle() {
+    if (!current_user_can('manage_options') || !isset($_POST['debug_log_tools_nonce'])) {
+        wp_die(esc_html__('Unauthorized access', 'debug-log-tools'));
+    }
+
+    check_admin_referer('toggle_debug_log', 'debug_log_tools_nonce');
+
+    try {
+        $debug_manager = new \DebugLogTools\Debug_Log_Manager();
+        $current_state = $debug_manager->is_debug_enabled();
+        $new_state = isset($_POST['enable_debug_log']) ? true : false;
+
+        if ($new_state !== $current_state) {
+            $debug_manager->toggle_debug($new_state);
+        }
+
+        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&debug_updated=' . ($new_state ? '1' : '0')));
+        exit;
+    } catch (Exception $e) {
+        wp_die(esc_html($e->getMessage()));
+    }
+}
+
+// Update the Debug_Log_Manager class in includes/class-debug-log-manager.php
+// Add this method to the Debug_Log_Manager class:
+public function toggle_debug($enable) {
+    $wp_config_path = ABSPATH . 'wp-config.php';
+    
+    if (!is_writable($wp_config_path)) {
+        throw new Exception(__('wp-config.php is not writable', 'debug-log-tools'));
+    }
+
+    $wp_config = file_get_contents($wp_config_path);
+    
+    // Replace existing debug constants
+    $patterns = array(
+        '/define\(\s*\'WP_DEBUG\',\s*(true|false)\s*\);/',
+        '/define\(\s*\'WP_DEBUG_LOG\',\s*(true|false)\s*\);/'
+    );
+    
+    $replacements = array(
+        "define('WP_DEBUG', " . ($enable ? 'true' : 'false') . ");",
+        "define('WP_DEBUG_LOG', " . ($enable ? 'true' : 'false') . ");"
+    );
+    
+    // If constants don't exist, add them before "That's all, stop editing"
+    if (!preg_match('/define\(\s*\'WP_DEBUG\'/i', $wp_config)) {
+        $wp_config = preg_replace(
+            '/\/\* That\'s all, stop editing! Happy publishing. \*\//',
+            "define('WP_DEBUG', " . ($enable ? 'true' : 'false') . ");\n" .
+            "define('WP_DEBUG_LOG', " . ($enable ? 'true' : 'false') . ");\n" .
+            "/* That's all, stop editing! Happy publishing. */",
+            $wp_config
+        );
+    } else {
+        $wp_config = preg_replace($patterns, $replacements, $wp_config);
+    }
+
+    if (!file_put_contents($wp_config_path, $wp_config)) {
+        throw new Exception(__('Failed to update wp-config.php', 'debug-log-tools'));
+    }
+}

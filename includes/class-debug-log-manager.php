@@ -11,10 +11,16 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+declare(strict_types=1);
+
 /**
  * Class Debug_Log_Manager
  */
 class Debug_Log_Manager {
+
+    const MAX_LOG_SIZE = 1048576; // 1MB
+    const CACHE_KEY = 'debug_log_content';
+    const CACHE_TTL = 60; // 1 minute
 
     /**
      * Initialize the debug log manager.
@@ -49,12 +55,12 @@ class Debug_Log_Manager {
         try {
             $this->update_wp_config( $enable_debug );
             
-            // Create log file if enabling debug
             if ( $enable_debug ) {
                 $log_file = \WP_CONTENT_DIR . '/debug.log';
                 if ( ! file_exists( $log_file ) && is_writable( \WP_CONTENT_DIR ) ) {
-                    @touch( $log_file );
-                    @chmod( $log_file, 0644 );
+                    if ( ! @touch( $log_file ) || ! @chmod( $log_file, 0644 ) ) {
+                        throw new Exception( 'Failed to create log file' );
+                    }
                 }
             }
             
@@ -67,6 +73,7 @@ class Debug_Log_Manager {
             );
             exit;
         } catch ( \Exception $e ) {
+            error_log( 'Debug Log Tools Error: ' . $e->getMessage() );
             \wp_die( \esc_html( $e->getMessage() ) );
         }
     }
@@ -147,5 +154,20 @@ class Debug_Log_Manager {
     public static function is_debug_enabled() {
         return defined( 'WP_DEBUG' ) && WP_DEBUG && 
                defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG;
+    }
+
+    private function safe_file_put_contents($path, $content) {
+        $temp = tempnam(dirname($path), 'tmp');
+        if (false === file_put_contents($temp, $content)) {
+            unlink($temp);
+            throw new Exception('Failed to write temporary file');
+        }
+        
+        if (!rename($temp, $path)) {
+            unlink($temp);
+            throw new Exception('Failed to move temporary file');
+        }
+        
+        return true;
     }
 } 

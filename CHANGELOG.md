@@ -4,6 +4,26 @@ All notable changes to Debug Log Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.6] - 2024-03-22
+### Added
+- Strict type checking and improved security
+- Enhanced error handling and logging
+- Performance optimizations with caching
+- Atomic file operations for safety
+- Better AJAX response handling
+
+### Fixed
+- wp-config.php modification reliability
+- File permission handling
+- Error message consistency
+
+## [3.1.5] - 2024-03-21
+### Added
+- Confirmation dialogs for critical actions
+### Fixed
+- Debug log enable/disable functionality
+- Improved wp-config.php modification handling
+
 ## [3.1.4] - 2024-03-20
 ### Fixed
 - Fixed linter errors related to WordPress core functions

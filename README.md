@@ -2,7 +2,7 @@
 
 A WordPress plugin for viewing, filtering, and managing debug logs directly from your WordPress dashboard.
 
-Version: 3.1.4
+Version: 3.1.6
 
 ## Description
 
