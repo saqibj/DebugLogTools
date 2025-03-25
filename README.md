@@ -2,7 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-3.1.6-blue.svg?style=flat-square)](https://github.com/saqibj/debug-log-tools)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0.txt)
-[![WordPress Tested Version](https://img.shields.io/wordpress/v/debug-log-tools?label=tested%20with&style=flat-square)](https://wordpress.org/plugins/debug-log-tools/)
+[![WordPress](https://img.shields.io/badge/WordPress-Plugin-0073aa.svg?style=flat-square&logo=wordpress)](https://wordpress.org/)
 [![PHP Version Required](https://img.shields.io/badge/php-%3E%3D7.4-8892BF.svg?style=flat-square)](https://php.net/)
 
 A WordPress plugin for viewing, filtering, and managing debug logs directly from your WordPress dashboard.
