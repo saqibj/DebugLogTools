@@ -278,4 +278,74 @@ jQuery(document).ready(function($) {
             }
         });
     }
+
+    let liveTailActive = false;
+    let liveTailInterval = null;
+    let lastLogSize = 0; // Initialize lastLogSize
+    const logContentElement = $('#debug-log-content');
+    const liveLogUpdatesElement = $('#live-log-updates');
+
+    $('#live-tail-checkbox').on('change', function() {
+        liveTailActive = $(this).is(':checked');
+
+        if (liveTailActive) {
+            lastLogSize = logContentElement.text().length; // Initial log content size
+            startLiveTail();
+        } else {
+            stopLiveTail();
+        }
+    });
+
+    function startLiveTail() {
+        if (liveTailInterval) {
+            return; // Prevent starting multiple intervals
+        }
+
+        liveTailInterval = setInterval(fetchNewLogLines, 2000); // Fetch new lines every 2 seconds
+        fetchNewLogLines(); // Fetch immediately on start
+    }
+
+    function stopLiveTail() {
+        clearInterval(liveTailInterval);
+        liveTailInterval = null;
+    }
+
+    function fetchNewLogLines() {
+        if (!liveTailActive) {
+            stopLiveTail(); // Ensure interval is cleared if not active
+            return;
+        }
+
+        const nonce = $('#debug_log_tools_live_log_nonce').val();
+
+        $.ajax({
+            url: ajaxurl, // WordPress AJAX URL is globally available
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'debug_log_tools_get_live_log',
+                security: nonce,
+                last_size: lastLogSize
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.data.lines && response.data.lines.length > 0) {
+                        $.each(response.data.lines, function(index, line) {
+                            liveLogUpdatesElement.append($('<p/>').text(line)); // Append new lines as paragraphs
+                        });
+                        // Scroll to bottom to show latest logs
+                        logContentElement.scrollTop(logContentElement[0].scrollHeight);
+                    }
+                    lastLogSize = response.data.current_size; // Update lastLogSize
+                } else {
+                    console.error('Error fetching new log lines:', response.data.message);
+                    stopLiveTail(); // Stop live tail on error
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('AJAX error fetching log lines:', textStatus, errorThrown);
+                stopLiveTail(); // Stop live tail on AJAX error
+            }
+        });
+    }
 }); 

@@ -11,12 +11,12 @@
  * Plugin Name: Debug Log Tools
  * Plugin URI:  https://github.com/saqibj/debug-log-tools
  * Description: View, filter, and manage WordPress debug logs from your dashboard.
- * Version:     3.1.6
+ * Version:     3.2.0
  * Author:      Saqib Jawaid
- * Author URI:  https://github.com/saqibj
+ * Author URI:  https://saqibj.com/
  * Text Domain: debug-log-tools
- * License:     GPL-3.0
- * License URI: https://www.gnu.org/licenses/gpl-3.0.txt
+ * License:     GPL-2.0+
+ * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  * Requires at least: 5.0
  * Requires PHP: 7.4
  *
@@ -32,7 +32,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('DEBUG_LOG_TOOLS_VERSION', '3.1.6');
+define('DEBUG_LOG_TOOLS_VERSION', '3.2.0');
 define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -166,6 +166,15 @@ function debug_log_tools_activate() {
 
     // Flush rewrite rules
     flush_rewrite_rules();
+
+    if ( ! wp_next_scheduled( 'debug_log_tools_daily_log_rotation' ) ) {
+        wp_schedule_event( wp_next_scheduled( 'daily' ), 'daily', 'debug_log_tools_daily_log_rotation' );
+    }
+
+    // Set default option for log rotation max size if not already set
+    if ( false === get_option( 'debug_log_tools_rotation_max_size' ) ) {
+        add_option( 'debug_log_tools_rotation_max_size', 10485760 ); // Default 10MB
+    }
 }
 register_activation_hook(__FILE__, 'debug_log_tools_activate');
 
@@ -185,6 +194,8 @@ function debug_log_tools_deactivate() {
 
     // Flush rewrite rules
     flush_rewrite_rules();
+
+    wp_clear_scheduled_hook( 'debug_log_tools_daily_log_rotation' );
 }
 register_deactivation_hook(__FILE__, 'debug_log_tools_deactivate');
 
@@ -1142,27 +1153,46 @@ add_action('plugins_loaded', function() {
 // Add this after the activation hook
 add_action('admin_post_debug_log_tools_toggle', 'debug_log_tools_handle_toggle');
 
+/**
+ * Handles the debug log toggle action.
+ */
 function debug_log_tools_handle_toggle() {
-    if (!current_user_can('manage_options') || !isset($_POST['debug_log_tools_nonce'])) {
-        wp_die(esc_html__('Unauthorized access', 'debug-log-tools'));
+    // Check nonce and user capabilities
+    if ( ! isset( $_POST['debug_log_tools_nonce'] ) || ! wp_verify_nonce( $_POST['debug_log_tools_nonce'], 'debug_log_tools_toggle' ) ) {
+        wp_nonce_ays( 'debug_log_tools_toggle' );
+    }
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( esc_html__( 'You do not have sufficient permissions to perform this action.', 'debug-log-tools' ) );
     }
 
-    check_admin_referer('toggle_debug_log', 'debug_log_tools_nonce');
+    $enable_debug = isset( $_POST['enable_debug_log'] );
+    $redirect_url = admin_url( 'tools.php?page=debug-log-tools' );
 
     try {
-        $debug_manager = new \DebugLogTools\Debug_Log_Manager();
-        $current_state = $debug_manager->is_debug_enabled();
-        $new_state = isset($_POST['enable_debug_log']) ? true : false;
-
-        if ($new_state !== $current_state) {
-            $debug_manager->toggle_debug($new_state);
-        }
-
-        wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&debug_updated=' . ($new_state ? '1' : '0')));
-        exit;
-    } catch (Exception $e) {
-        wp_die(esc_html($e->getMessage()));
+        $debug_log_manager = new Debug_Log_Manager();
+        $debug_log_manager->toggle_debug( $enable_debug );
+        // Success message as admin notice
+        add_action( 'admin_notices', function() {
+            ?>
+            <div class="notice notice-success is-dismissible">
+                <p><?php esc_html_e( 'Debug log settings updated successfully.', 'debug-log-tools' ); ?></p>
+            </div>
+            <?php
+        } );
+    } catch ( Exception $e ) {
+        // Error message as admin notice
+        add_action( 'admin_notices', function() use ( $e ) {
+            ?>
+            <div class="notice notice-error is-dismissible">
+                <p><?php esc_html_e( 'Failed to update debug log settings.', 'debug-log-tools' ); ?></p>
+                <p><?php echo esc_html( $e->getMessage() ); ?></p>
+            </div>
+            <?php
+        } );
     }
+
+    wp_safe_redirect( $redirect_url );
+    exit;
 }
 
 // Update the Debug_Log_Manager class in includes/class-debug-log-manager.php
@@ -1203,4 +1233,36 @@ public function toggle_debug($enable) {
     if (!file_put_contents($wp_config_path, $wp_config)) {
         throw new Exception(__('Failed to update wp-config.php', 'debug-log-tools'));
     }
+}
+
+add_action( 'wp_ajax_debug_log_tools_get_live_log', 'debug_log_tools_get_live_log_callback' );
+
+/**
+ * AJAX callback to get new lines from the debug log file for live tailing.
+ */
+function debug_log_tools_get_live_log_callback() {
+    check_ajax_referer( 'debug_log_tools_live_log_nonce', 'security' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'message' => esc_html__( 'You do not have sufficient permissions to perform this action.', 'debug-log-tools' ) ] );
+    }
+
+    $log_manager = new Debug_Log_Manager();
+    $log_file_path = $log_manager->get_log_file_path();
+
+    $last_size = isset( $_POST['last_size'] ) ? intval( $_POST['last_size'] ) : 0;
+
+    try {
+        $new_lines = $log_manager->get_new_log_lines( $log_file_path, $last_size );
+        wp_send_json_success( [ 'lines' => $new_lines, 'current_size' => filesize( $log_file_path ) ] );
+    } catch ( Exception $e ) {
+        wp_send_json_error( [ 'message' => $e->getMessage() ] );
+    }
+}
+
+add_action( 'debug_log_tools_daily_log_rotation', 'debug_log_tools_perform_log_rotation' );
+
+function debug_log_tools_perform_log_rotation() {
+    $log_manager = new Debug_Log_Manager();
+    $log_manager->rotate_log_file();
 }

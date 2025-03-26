@@ -5,9 +5,9 @@
 [![WordPress](https://img.shields.io/badge/WordPress-Plugin-0073aa.svg?style=flat-square&logo=wordpress)](https://wordpress.org/)
 [![PHP Version Required](https://img.shields.io/badge/php-%3E%3D7.4-8892BF.svg?style=flat-square)](https://php.net/)
 
-A WordPress plugin for viewing, filtering, and managing debug logs directly from your WordPress dashboard.
+**View, filter, and manage WordPress debug logs from your dashboard.**
 
-Version: 3.1.6
+Current Version: 3.2.0
 
 ## Description
 
