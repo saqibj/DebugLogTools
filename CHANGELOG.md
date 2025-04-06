@@ -4,7 +4,19 @@ All notable changes to Debug Log Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.0] - 2024-03-21
+## [3.2.1] - 2024-04-06
+### Fixed
+- Fixed performance issues with large log files
+- Improved error handling in log file operations
+- Fixed memory leaks in log rotation
+- Improved caching mechanism for log statistics
+
+### Changed
+- Optimized log file reading operations
+- Enhanced error recovery mechanisms
+- Improved file system monitoring
+
+## [3.2.0] - 2024-04-05
 ### Added
 - Log Filtering and Searching
 - Live Log Tail feature

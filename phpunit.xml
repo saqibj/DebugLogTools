@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<phpunit
+    bootstrap="tests/bootstrap.php"
+    backupGlobals="false"
+    colors="true"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    processIsolation="false"
+    stopOnFailure="false"
+>
+    <testsuites>
+        <testsuite name="Debug Log Tools Test Suite">
+            <directory prefix="test-" suffix=".php">./tests/</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">./includes</directory>
+            <exclude>
+                <directory>./includes/vendor</directory>
+                <directory>./includes/tests</directory>
+            </exclude>
+        </whitelist>
+    </filter>
+    <php>
+        <env name="WP_PLUGIN_DIR" value="./" />
+        <env name="WP_CONTENT_DIR" value="./wp-content" />
+        <env name="WP_DEBUG" value="1" />
+        <env name="WP_DEBUG_LOG" value="1" />
+    </php>
+</phpunit> 

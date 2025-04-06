@@ -10,11 +10,12 @@
  * @wordpress-plugin
  * Plugin Name: Debug Log Tools
  * Plugin URI:  https://github.com/saqibj/debug-log-tools
- * Description: View, filter, and manage WordPress debug logs from your dashboard.
- * Version:     3.2.0
+ * Description: View, filter, and manage WordPress debug logs from your dashboard. Provides advanced logging features, log rotation, and troubleshooting tools.
+ * Version:     3.2.1
  * Author:      Saqib Jawaid
  * Author URI:  https://saqibj.com/
  * Text Domain: debug-log-tools
+ * Domain Path: /languages
  * License:     GPL-2.0+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  * Requires at least: 5.0
@@ -24,30 +25,41 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see https://www.gnu.org/licenses/gpl-3.0.html.
+ *
+ * @since      1.0.0
+ * @since      2.0.0 Added log rotation and performance monitoring
+ * @since      3.0.0 Added troubleshooting tools and security features
+ * @since      3.2.0 Added live log tailing and improved filtering
+ * @since      3.2.1 Fixed performance issues and improved error handling
  */
 
-// If this file is called directly, abort.
-if (!defined('WPINC')) {
-    die;
+namespace DebugLogTools;
+
+if (!defined('ABSPATH')) {
+    exit;
 }
 
 // Define plugin constants
-define('DEBUG_LOG_TOOLS_VERSION', '3.2.0');
+if (!defined('DEBUG_LOG_TOOLS_VERSION')) {
+    define('DEBUG_LOG_TOOLS_VERSION', '3.2.1');
+}
 define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
-// Direct includes for core classes
-require_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/class-module-loader.php';
-require_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/class-debug-log-manager.php';
-require_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/class-troubleshoot-tools.php';
-require_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/class-base-module.php';
-
 // Autoloader for module classes
 spl_autoload_register(function ($class) {
     // Project-specific namespace prefix
-    $prefix = 'DebugLogTools\\Modules\\';
-    $base_dir = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/';
+    $prefix = 'DebugLogTools\\';
+    $base_dir = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/';
 
     // Check if the class uses the namespace prefix
     $len = strlen($prefix);
@@ -57,40 +69,31 @@ spl_autoload_register(function ($class) {
 
     // Get the relative class name
     $relative_class = substr($class, $len);
-    
-    // Extract module name
-    $words = explode('\\', $relative_class);
-    $class_name = end($words);
-    
-    // Convert class name to file name (e.g., Debugging => class-debugging.php)
-    $file_name = 'class-' . strtolower($class_name) . '.php';
-    
-    // For module classes, use modules/name/class-name.php format
-    // Example: DebugLogTools\Modules\Debugging => includes/modules/debugging/class-debugging.php
-    if (count($words) === 1) {
-        $module_name = strtolower($class_name);
-        $file = $base_dir . $module_name . '/' . $file_name;
-        
-        // Log the attempt
-        error_log("Debug Log Tools: Attempting to load module class from: " . $file);
-        
-        if (file_exists($file)) {
-            require_once $file;
-        } else {
-            error_log("Debug Log Tools: Module file not found: " . $file);
-        }
+
+    // Replace namespace separators with directory separators
+    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
+
+    // If the file exists, require it
+    if (file_exists($file)) {
+        require_once $file;
     }
 });
 
 /**
  * Initialize the plugin.
+ *
+ * @return void
  */
 function debug_log_tools_init() {
     // Load text domain
-    load_plugin_textdomain('debug-log-tools', false, dirname(DEBUG_LOG_TOOLS_PLUGIN_BASENAME) . '/languages');
+    load_plugin_textdomain(
+        'debug-log-tools',
+        false,
+        dirname(DEBUG_LOG_TOOLS_PLUGIN_BASENAME) . '/languages'
+    );
 
-    // Initialize core classes
     try {
+        // Initialize core classes
         $module_loader = new \DebugLogTools\Module_Loader();
         $module_loader->init();
 
@@ -100,13 +103,18 @@ function debug_log_tools_init() {
         $troubleshoot_tools = new \DebugLogTools\Troubleshoot_Tools();
         $troubleshoot_tools->init();
     } catch (\Exception $e) {
-        error_log('Debug Log Tools initialization error: ' . $e->getMessage());
+        error_log(sprintf(
+            'Debug Log Tools initialization error: %s',
+            $e->getMessage()
+        ));
     }
 }
 add_action('plugins_loaded', 'debug_log_tools_init');
 
 /**
- * Activation hook.
+ * Activation hook handler.
+ *
+ * @return void
  */
 function debug_log_tools_activate() {
     // Check WordPress version
@@ -130,7 +138,7 @@ function debug_log_tools_activate() {
     }
 
     // Create log directory if it doesn't exist
-    $log_dir = WP_CONTENT_DIR . '/debug-logs';
+    $log_dir = trailingslashit(WP_CONTENT_DIR) . 'debug-logs';
     if (!file_exists($log_dir)) {
         wp_mkdir_p($log_dir);
     }
@@ -138,7 +146,12 @@ function debug_log_tools_activate() {
     // Set default options
     $default_options = array(
         'debug_log_tools_version' => DEBUG_LOG_TOOLS_VERSION,
-        'debug_log_tools_active_modules' => array('debugging', 'notifications', 'performance', 'security'),
+        'debug_log_tools_active_modules' => array(
+            'debugging',
+            'notifications',
+            'performance',
+            'security'
+        ),
         'debug_log_tools_settings' => array(
             'notifications' => array(
                 'enabled' => true,
@@ -166,36 +179,21 @@ function debug_log_tools_activate() {
 
     // Flush rewrite rules
     flush_rewrite_rules();
-
-    if ( ! wp_next_scheduled( 'debug_log_tools_daily_log_rotation' ) ) {
-        wp_schedule_event( wp_next_scheduled( 'daily' ), 'daily', 'debug_log_tools_daily_log_rotation' );
-    }
-
-    // Set default option for log rotation max size if not already set
-    if ( false === get_option( 'debug_log_tools_rotation_max_size' ) ) {
-        add_option( 'debug_log_tools_rotation_max_size', 10485760 ); // Default 10MB
-    }
 }
 register_activation_hook(__FILE__, 'debug_log_tools_activate');
 
 /**
- * Deactivation hook.
+ * Deactivation hook handler.
+ *
+ * @return void
  */
 function debug_log_tools_deactivate() {
     // Clear scheduled hooks
-    wp_clear_scheduled_hook('debug_log_tools_cleanup');
-    wp_clear_scheduled_hook('debug_log_tools_security_scan');
-    wp_clear_scheduled_hook('debug_log_tools_performance_check');
-
-    // Clear transients
-    delete_transient('debug_log_tools_notifications');
-    delete_transient('debug_log_tools_performance_data');
-    delete_transient('debug_log_tools_security_events');
-
+    wp_clear_scheduled_hook('debug_log_tools/cleanup');
+    wp_clear_scheduled_hook('debug_log_tools/security_scan');
+    
     // Flush rewrite rules
     flush_rewrite_rules();
-
-    wp_clear_scheduled_hook( 'debug_log_tools_daily_log_rotation' );
 }
 register_deactivation_hook(__FILE__, 'debug_log_tools_deactivate');
 
@@ -287,13 +285,13 @@ add_action('admin_enqueue_scripts', 'debug_log_tools_enqueue_assets');
  */
 function debug_log_tools_init_scheduled_tasks() {
     // Schedule daily cleanup
-    if (!wp_next_scheduled('debug_log_tools_cleanup')) {
-        wp_schedule_event(time(), 'daily', 'debug_log_tools_cleanup');
+    if (!wp_next_scheduled('debug_log_tools/cleanup')) {
+        wp_schedule_event(time(), 'daily', 'debug_log_tools/cleanup');
     }
 
     // Schedule hourly security scan
-    if (!wp_next_scheduled('debug_log_tools_security_scan')) {
-        wp_schedule_event(time(), 'hourly', 'debug_log_tools_security_scan');
+    if (!wp_next_scheduled('debug_log_tools/security_scan')) {
+        wp_schedule_event(time(), 'hourly', 'debug_log_tools/security_scan');
     }
 
     // Schedule performance check every 15 minutes
@@ -320,7 +318,7 @@ add_filter('cron_schedules', 'debug_log_tools_add_cron_schedule');
  */
 function debug_log_tools_cleanup() {
     // Clean up old log entries
-    $log_dir = WP_CONTENT_DIR . '/debug-logs';
+    $log_dir = trailingslashit(WP_CONTENT_DIR) . 'debug-logs';
     if (is_dir($log_dir)) {
         $files = glob($log_dir . '/*.log');
         $now = time();
@@ -341,7 +339,7 @@ function debug_log_tools_cleanup() {
         AND option_name NOT LIKE '_transient_timeout_debug_log_tools_%'"
     );
 }
-add_action('debug_log_tools_cleanup', 'debug_log_tools_cleanup');
+add_action('debug_log_tools/cleanup', 'debug_log_tools_cleanup');
 
 /**
  * AJAX handler for log refresh
@@ -353,7 +351,7 @@ function debug_log_tools_ajax_refresh() {
         wp_send_json_error( esc_html__( 'Unauthorized access.', 'debug-log-tools' ) );
     }
 
-    $log_file = WP_CONTENT_DIR . '/debug.log';
+    $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
     if ( file_exists( $log_file ) ) {
         $contents = debug_log_tools_get_log_contents($log_file);
         if ( false === $contents ) {
@@ -364,13 +362,25 @@ function debug_log_tools_ajax_refresh() {
     wp_send_json_error( esc_html__( 'Log file not found.', 'debug-log-tools' ) );
 }
 
+/**
+ * Get log contents from the debug log file
+ *
+ * @param string $log_file Path to the log file
+ * @return string The contents of the log file or empty string if file doesn't exist
+ */
 function debug_log_tools_get_log_contents($log_file) {
     // Try to create log file if it doesn't exist and debug is enabled
     if (!file_exists($log_file)) {
         $wp_content_dir = dirname($log_file);
         if (is_writable($wp_content_dir)) {
-            @touch($log_file);
-            @chmod($log_file, 0644);
+            if (!touch($log_file)) {
+                error_log('Failed to create log file: ' . $log_file);
+                return false;
+            }
+            if (!chmod($log_file, 0644)) {
+                error_log('Failed to set permissions on log file: ' . $log_file);
+                return false;
+            }
         }
     }
 
@@ -379,15 +389,15 @@ function debug_log_tools_get_log_contents($log_file) {
     }
 
     $size = filesize($log_file);
-    $max_size = 1024 * 1024; // 1MB
+    const MAX_LOG_SIZE = 1024 * 1024; // 1MB with clear calculation
 
     $handle = fopen($log_file, 'r');
-    if ($size > $max_size) {
-        fseek($handle, -$max_size, SEEK_END);
+    if ($size > MAX_LOG_SIZE) {
+        fseek($handle, -MAX_LOG_SIZE, SEEK_END);
         // Skip first incomplete line
         fgets($handle);
     }
-    $contents = fread($handle, $max_size);
+    $contents = fread($handle, MAX_LOG_SIZE);
     fclose($handle);
     
     return $contents;
@@ -396,7 +406,10 @@ function debug_log_tools_get_log_contents($log_file) {
 // Display Debug Log
 function debug_log_tools_display() {
     if (!current_user_can('manage_options')) {
-        return;
+        wp_die(
+            esc_html__('You do not have sufficient permissions to access this page.', 'debug-log-tools'),
+            403
+        );
     }
 
     $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'log';
@@ -479,10 +492,13 @@ function debug_log_tools_display_troubleshoot() {
 // Add this function after debug_log_tools_display_troubleshoot()
 function debug_log_tools_display_log() {
     if (!current_user_can('manage_options')) {
-        return;
+        wp_die(
+            esc_html__('You do not have sufficient permissions to access this page.', 'debug-log-tools'),
+            403
+        );
     }
 
-    $log_file = WP_CONTENT_DIR . '/debug.log';
+    $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
     $log_exists = file_exists($log_file);
     $log_content = debug_log_tools_get_log_contents($log_file);
     $debug_enabled = \DebugLogTools\Debug_Log_Manager::is_debug_enabled();
@@ -561,17 +577,7 @@ function debug_log_tools_display_log() {
 }
 
 // Add Admin Menu Item
-function debug_log_tools_admin_menu() {
-    add_submenu_page(
-        'tools.php',
-        __('Debug Log Tools', 'debug-log-tools'),
-        __('Debug Log Tools', 'debug-log-tools'),
-        'manage_options',
-        'debug-log-tools',
-        'debug_log_tools_display'
-    );
-}
-add_action('admin_menu', 'debug_log_tools_admin_menu');
+\add_action('admin_menu', 'debug_log_tools_admin_menu');
 
 /**
  * AJAX handler for flushing the log
@@ -584,7 +590,7 @@ function debug_log_tools_ajax_flush() {
             throw new Exception('Unauthorized access');
         }
 
-        $log_file = WP_CONTENT_DIR . '/debug.log';
+        $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
         if (!file_exists($log_file) || !is_writable($log_file)) {
             throw new Exception('Log file is not writable');
         }
@@ -611,7 +617,7 @@ function debug_log_tools_ajax_clear() {
         wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
     }
 
-    $log_file = WP_CONTENT_DIR . '/debug.log';
+    $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
     if (!file_exists($log_file)) {
         wp_send_json_error(__('Log file does not exist.', 'debug-log-tools'));
     }
@@ -641,7 +647,7 @@ function debug_log_tools_download_log() {
         wp_die(__('Security check failed', 'debug-log-tools'));
     }
 
-    $log_file = WP_CONTENT_DIR . '/debug.log';
+    $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
     if (!file_exists($log_file) || !is_readable($log_file)) {
         wp_safe_redirect(admin_url('tools.php?page=debug-log-tools&download_error=1'));
         exit;
@@ -785,14 +791,16 @@ function debug_log_tools_update_log() {
     check_ajax_referer('debug_log_tools_refresh', 'nonce');
     
     if (!current_user_can('manage_options')) {
-        wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
+        wp_send_json_error(
+            esc_html__('Failed to update log file.', 'debug-log-tools')
+        );
     }
 
     if (!isset($_POST['content'])) {
         wp_send_json_error(__('No content provided.', 'debug-log-tools'));
     }
 
-    $log_file = WP_CONTENT_DIR . '/debug.log';
+    $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
     if (!file_exists($log_file) || !is_writable($log_file)) {
         wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
     }
@@ -801,7 +809,9 @@ function debug_log_tools_update_log() {
     $result = file_put_contents($log_file, $content);
     
     if ($result === false) {
-        wp_send_json_error(__('Failed to update log file.', 'debug-log-tools'));
+        wp_send_json_error(
+            esc_html__('Failed to update log file.', 'debug-log-tools')
+        );
     }
 
     wp_send_json_success();
@@ -904,7 +914,10 @@ class Debug_Log_Tools_Admin {
      */
     public function display_page() {
         if (!current_user_can('manage_options')) {
-            return;
+            wp_die(
+                esc_html__('You do not have sufficient permissions to access this page.', 'debug-log-tools'),
+                403
+            );
         }
 
         $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'log';
@@ -938,7 +951,7 @@ class Debug_Log_Tools_Admin {
      * Display the log viewer
      */
     public function display_log() {
-        $log_file = WP_CONTENT_DIR . '/debug.log';
+        $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
         $log_exists = file_exists($log_file);
         $log_content = $this->get_log_contents($log_file);
         $debug_enabled = \DebugLogTools\Debug_Log_Manager::is_debug_enabled();
@@ -964,8 +977,14 @@ class Debug_Log_Tools_Admin {
         if (!file_exists($log_file)) {
             $wp_content_dir = dirname($log_file);
             if (is_writable($wp_content_dir)) {
-                @touch($log_file);
-                @chmod($log_file, 0644);
+                if (!touch($log_file)) {
+                    error_log('Failed to create log file: ' . $log_file);
+                    return false;
+                }
+                if (!chmod($log_file, 0644)) {
+                    error_log('Failed to set permissions on log file: ' . $log_file);
+                    return false;
+                }
             }
         }
 
@@ -974,15 +993,15 @@ class Debug_Log_Tools_Admin {
         }
 
         $size = filesize($log_file);
-        $max_size = 1024 * 1024; // 1MB
+        const MAX_LOG_SIZE = 1024 * 1024; // 1MB with clear calculation
 
         $handle = fopen($log_file, 'r');
-        if ($size > $max_size) {
-            fseek($handle, -$max_size, SEEK_END);
+        if ($size > MAX_LOG_SIZE) {
+            fseek($handle, -MAX_LOG_SIZE, SEEK_END);
             // Skip first incomplete line
             fgets($handle);
         }
-        $contents = fread($handle, $max_size);
+        $contents = fread($handle, MAX_LOG_SIZE);
         fclose($handle);
         
         return $contents;
@@ -995,18 +1014,18 @@ class Debug_Log_Tools_Admin {
         check_ajax_referer('debug_log_tools_refresh', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
+            wp_send_json_error(esc_html__('Unauthorized access.', 'debug-log-tools'));
         }
 
-        $log_file = WP_CONTENT_DIR . '/debug.log';
+        $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
         if (file_exists($log_file)) {
             $contents = $this->get_log_contents($log_file);
             if (false === $contents) {
-                wp_send_json_error(__('Error reading log file.', 'debug-log-tools'));
+                wp_send_json_error(esc_html__('Error reading log file.', 'debug-log-tools'));
             }
             wp_send_json_success(esc_html($contents));
         }
-        wp_send_json_error(__('Log file not found.', 'debug-log-tools'));
+        wp_send_json_error(esc_html__('Log file not found.', 'debug-log-tools'));
     }
 
     /**
@@ -1020,7 +1039,7 @@ class Debug_Log_Tools_Admin {
                 throw new Exception('Unauthorized access');
             }
 
-            $log_file = WP_CONTENT_DIR . '/debug.log';
+            $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
             if (!file_exists($log_file) || !is_writable($log_file)) {
                 throw new Exception('Log file is not writable');
             }
@@ -1046,7 +1065,7 @@ class Debug_Log_Tools_Admin {
             wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
         }
 
-        $log_file = WP_CONTENT_DIR . '/debug.log';
+        $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
         if (!file_exists($log_file)) {
             wp_send_json_error(__('Log file does not exist.', 'debug-log-tools'));
         }
@@ -1070,14 +1089,14 @@ class Debug_Log_Tools_Admin {
         check_ajax_referer('debug_log_tools_refresh', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('Unauthorized access.', 'debug-log-tools'));
+            wp_send_json_error(esc_html__('Failed to update log file.', 'debug-log-tools'));
         }
 
         if (!isset($_POST['content'])) {
             wp_send_json_error(__('No content provided.', 'debug-log-tools'));
         }
 
-        $log_file = WP_CONTENT_DIR . '/debug.log';
+        $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
         if (!file_exists($log_file) || !is_writable($log_file)) {
             wp_send_json_error(__('Log file is not writable.', 'debug-log-tools'));
         }
@@ -1086,7 +1105,7 @@ class Debug_Log_Tools_Admin {
         $result = file_put_contents($log_file, $content);
         
         if ($result === false) {
-            wp_send_json_error(__('Failed to update log file.', 'debug-log-tools'));
+            wp_send_json_error(esc_html__('Failed to update log file.', 'debug-log-tools'));
         }
 
         wp_send_json_success();
@@ -1120,17 +1139,17 @@ class Debug_Log_Tools_Admin {
         
         if (isset($_GET['clear_error'])) {
             $error_code = intval($_GET['clear_error']);
-            $error_message = esc_html__('Error: Could not clear debug log.', 'debug-log-tools');
+            $error_message = esc_html__( 'Error: Could not clear debug log.', 'debug-log-tools' );
             
             switch ($error_code) {
                 case 1:
-                    $error_message = esc_html__('Error: Debug log file does not exist.', 'debug-log-tools');
+                    $error_message = esc_html__( 'Error: Debug log file does not exist.', 'debug-log-tools' );
                     break;
                 case 2:
-                    $error_message = esc_html__('Error: Debug log file is not writable. Please check file permissions.', 'debug-log-tools');
+                    $error_message = esc_html__( 'Error: Debug log file is not writable. Please check file permissions.', 'debug-log-tools' );
                     break;
                 case 3:
-                    $error_message = esc_html__('Error: Failed to write to debug log file.', 'debug-log-tools');
+                    $error_message = esc_html__( 'Error: Failed to write to debug log file.', 'debug-log-tools' );
                     break;
             }
             
@@ -1169,7 +1188,7 @@ function debug_log_tools_handle_toggle() {
     $redirect_url = admin_url( 'tools.php?page=debug-log-tools' );
 
     try {
-        $debug_log_manager = new Debug_Log_Manager();
+        $debug_log_manager = new \DebugLogTools\Debug_Log_Manager();
         $debug_log_manager->toggle_debug( $enable_debug );
         // Success message as admin notice
         add_action( 'admin_notices', function() {
@@ -1195,46 +1214,6 @@ function debug_log_tools_handle_toggle() {
     exit;
 }
 
-// Update the Debug_Log_Manager class in includes/class-debug-log-manager.php
-// Add this method to the Debug_Log_Manager class:
-public function toggle_debug($enable) {
-    $wp_config_path = ABSPATH . 'wp-config.php';
-    
-    if (!is_writable($wp_config_path)) {
-        throw new Exception(__('wp-config.php is not writable', 'debug-log-tools'));
-    }
-
-    $wp_config = file_get_contents($wp_config_path);
-    
-    // Replace existing debug constants
-    $patterns = array(
-        '/define\(\s*\'WP_DEBUG\',\s*(true|false)\s*\);/',
-        '/define\(\s*\'WP_DEBUG_LOG\',\s*(true|false)\s*\);/'
-    );
-    
-    $replacements = array(
-        "define('WP_DEBUG', " . ($enable ? 'true' : 'false') . ");",
-        "define('WP_DEBUG_LOG', " . ($enable ? 'true' : 'false') . ");"
-    );
-    
-    // If constants don't exist, add them before "That's all, stop editing"
-    if (!preg_match('/define\(\s*\'WP_DEBUG\'/i', $wp_config)) {
-        $wp_config = preg_replace(
-            '/\/\* That\'s all, stop editing! Happy publishing. \*\//',
-            "define('WP_DEBUG', " . ($enable ? 'true' : 'false') . ");\n" .
-            "define('WP_DEBUG_LOG', " . ($enable ? 'true' : 'false') . ");\n" .
-            "/* That's all, stop editing! Happy publishing. */",
-            $wp_config
-        );
-    } else {
-        $wp_config = preg_replace($patterns, $replacements, $wp_config);
-    }
-
-    if (!file_put_contents($wp_config_path, $wp_config)) {
-        throw new Exception(__('Failed to update wp-config.php', 'debug-log-tools'));
-    }
-}
-
 add_action( 'wp_ajax_debug_log_tools_get_live_log', 'debug_log_tools_get_live_log_callback' );
 
 /**
@@ -1247,7 +1226,7 @@ function debug_log_tools_get_live_log_callback() {
         wp_send_json_error( [ 'message' => esc_html__( 'You do not have sufficient permissions to perform this action.', 'debug-log-tools' ) ] );
     }
 
-    $log_manager = new Debug_Log_Manager();
+    $log_manager = new \DebugLogTools\Debug_Log_Manager();
     $log_file_path = $log_manager->get_log_file_path();
 
     $last_size = isset( $_POST['last_size'] ) ? intval( $_POST['last_size'] ) : 0;
@@ -1263,6 +1242,28 @@ function debug_log_tools_get_live_log_callback() {
 add_action( 'debug_log_tools_daily_log_rotation', 'debug_log_tools_perform_log_rotation' );
 
 function debug_log_tools_perform_log_rotation() {
-    $log_manager = new Debug_Log_Manager();
+    $log_manager = new \DebugLogTools\Debug_Log_Manager();
     $log_manager->rotate_log_file();
+}
+
+// Add proper cleanup of all plugin data
+register_uninstall_hook(__FILE__, 'debug_log_tools_uninstall');
+
+function debug_log_tools_uninstall() {
+    if (!defined('WP_UNINSTALL_PLUGIN')) {
+        exit;
+    }
+    
+    // Clean up all options with a single prefix
+    global $wpdb;
+    $wpdb->query(
+        $wpdb->prepare(
+            "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+            'debug_log_tools_%'
+        )
+    );
+    
+    // Clean up any custom tables if created
+    // Clean up any custom post types if created
+    // Clean up any custom taxonomies if created
 }
