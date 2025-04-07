@@ -390,15 +390,15 @@ function debug_log_tools_get_log_contents($log_file) {
     }
 
     $size = filesize($log_file);
-    const MAX_LOG_SIZE = 1024 * 1024; // 1MB with clear calculation
+    $max_log_size = 1024 * 1024; // 1MB with clear calculation
 
     $handle = fopen($log_file, 'r');
-    if ($size > MAX_LOG_SIZE) {
-        fseek($handle, -MAX_LOG_SIZE, SEEK_END);
+    if ($size > $max_log_size) {
+        fseek($handle, -$max_log_size, SEEK_END);
         // Skip first incomplete line
         fgets($handle);
     }
-    $contents = fread($handle, MAX_LOG_SIZE);
+    $contents = fread($handle, $max_log_size);
     fclose($handle);
     
     return $contents;
@@ -994,15 +994,15 @@ class Debug_Log_Tools_Admin {
         }
 
         $size = filesize($log_file);
-        const MAX_LOG_SIZE = 1024 * 1024; // 1MB with clear calculation
+        $max_log_size = 1024 * 1024; // 1MB with clear calculation
 
         $handle = fopen($log_file, 'r');
-        if ($size > MAX_LOG_SIZE) {
-            fseek($handle, -MAX_LOG_SIZE, SEEK_END);
+        if ($size > $max_log_size) {
+            fseek($handle, -$max_log_size, SEEK_END);
             // Skip first incomplete line
             fgets($handle);
         }
-        $contents = fread($handle, MAX_LOG_SIZE);
+        $contents = fread($handle, $max_log_size);
         fclose($handle);
         
         return $contents;

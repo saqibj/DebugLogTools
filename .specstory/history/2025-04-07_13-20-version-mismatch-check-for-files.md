@@ -1648,6 +1648,69 @@ This commit message:
 
 ---
 
+_**User**_
+
+Parse error: syntax error, unexpected token "const" in /home/burjmoda/public_html/wp-content/plugins/DebugLogTools/debug-log-tools.php on line 393
+
+---
+
+_**Assistant**_
+
+I'll help you investigate and fix the syntax error in the debug-log-tools.php file. Let me check the code around line 393.
+
+---
+
+Read file: debug-log-tools.php
+
+---
+
+I can see the issue. On line 393, there's a syntax error with the `const` declaration. The problem is that `const` declarations must be at the class or namespace level in PHP - they cannot be inside functions. Let me fix this by changing it to a regular variable definition.
+
+---
+
+```diff
+  
+      $size = filesize($log_file);
+-     const MAX_LOG_SIZE = 1024 * 1024; // 1MB with clear calculation
++     $max_log_size = 1024 * 1024; // 1MB with clear calculation
+  
+      $handle = fopen($log_file, 'r');
+-     if ($size > MAX_LOG_SIZE) {
+-         fseek($handle, -MAX_LOG_SIZE, SEEK_END);
++     if ($size > $max_log_size) {
++         fseek($handle, -$max_log_size, SEEK_END);
+          // Skip first incomplete line
+          fgets($handle);
+      }
+-     $contents = fread($handle, MAX_LOG_SIZE);
++     $contents = fread($handle, $max_log_size);
+      fclose($handle);
+      
+  
+          $size = filesize($log_file);
+-         const MAX_LOG_SIZE = 1024 * 1024; // 1MB with clear calculation
++         $max_log_size = 1024 * 1024; // 1MB with clear calculation
+  
+          $handle = fopen($log_file, 'r');
+-         if ($size > MAX_LOG_SIZE) {
+-             fseek($handle, -MAX_LOG_SIZE, SEEK_END);
++         if ($size > $max_log_size) {
++             fseek($handle, -$max_log_size, SEEK_END);
+              // Skip first incomplete line
+              fgets($handle);
+          }
+-         $contents = fread($handle, MAX_LOG_SIZE);
++         $contents = fread($handle, $max_log_size);
+          fclose($handle);
+          
+```
+
+---
+
+
+
+---
+
 
 
 ---
