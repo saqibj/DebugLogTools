@@ -42,39 +42,45 @@
  * @since      3.2.2 Enhanced error recovery and optimized log operations
  */
 
-namespace DebugLogTools;
-
+// Exit if accessed directly
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define plugin constants
+// Check if WordPress is loaded
+if (!function_exists('add_action')) {
+    header('Status: 403 Forbidden');
+    header('HTTP/1.1 403 Forbidden');
+    exit;
+}
+
+// Define plugin version
 if (!defined('DEBUG_LOG_TOOLS_VERSION')) {
     define('DEBUG_LOG_TOOLS_VERSION', '3.2.2');
 }
-define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
-// Autoloader for module classes
+// Define plugin paths
+define('DEBUG_LOG_TOOLS_PLUGIN_FILE', __FILE__);
+define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(DEBUG_LOG_TOOLS_PLUGIN_FILE));
+define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(DEBUG_LOG_TOOLS_PLUGIN_FILE));
+define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(DEBUG_LOG_TOOLS_PLUGIN_FILE));
+
+// Load plugin dependencies
+require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+// Autoloader for plugin classes
 spl_autoload_register(function ($class) {
-    // Project-specific namespace prefix
     $prefix = 'DebugLogTools\\';
-    $base_dir = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/';
+    $base_dir = __DIR__ . '/includes/';
 
-    // Check if the class uses the namespace prefix
     $len = strlen($prefix);
     if (strncmp($prefix, $class, $len) !== 0) {
         return;
     }
 
-    // Get the relative class name
     $relative_class = substr($class, $len);
-
-    // Replace namespace separators with directory separators
     $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
 
-    // If the file exists, require it
     if (file_exists($file)) {
         require_once $file;
     }
@@ -82,8 +88,6 @@ spl_autoload_register(function ($class) {
 
 /**
  * Initialize the plugin.
- *
- * @return void
  */
 function debug_log_tools_init() {
     // Load text domain
@@ -95,30 +99,30 @@ function debug_log_tools_init() {
 
     try {
         // Initialize core classes
-        $module_loader = new \DebugLogTools\Module_Loader();
+        $module_loader = new DebugLogTools\Module_Loader();
         $module_loader->init();
 
-        $debug_log_manager = new \DebugLogTools\Debug_Log_Manager();
+        $debug_log_manager = new DebugLogTools\Debug_Log_Manager();
         $debug_log_manager->init();
 
-        $troubleshoot_tools = new \DebugLogTools\Troubleshoot_Tools();
+        $troubleshoot_tools = new DebugLogTools\Troubleshoot_Tools();
         $troubleshoot_tools->init();
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         error_log(sprintf(
             'Debug Log Tools initialization error: %s',
             $e->getMessage()
         ));
     }
 }
+
+// Hook into WordPress
 add_action('plugins_loaded', 'debug_log_tools_init');
 
 /**
- * Activation hook handler.
- *
- * @return void
+ * Plugin activation handler.
  */
 function debug_log_tools_activate() {
-    // Check WordPress version
+    // Version checks
     if (version_compare(get_bloginfo('version'), '5.0', '<')) {
         deactivate_plugins(DEBUG_LOG_TOOLS_PLUGIN_BASENAME);
         wp_die(
@@ -181,7 +185,7 @@ function debug_log_tools_activate() {
     // Flush rewrite rules
     flush_rewrite_rules();
 }
-register_activation_hook(__FILE__, 'debug_log_tools_activate');
+register_activation_hook(DEBUG_LOG_TOOLS_PLUGIN_FILE, 'debug_log_tools_activate');
 
 /**
  * Deactivation hook handler.
@@ -196,7 +200,7 @@ function debug_log_tools_deactivate() {
     // Flush rewrite rules
     flush_rewrite_rules();
 }
-register_deactivation_hook(__FILE__, 'debug_log_tools_deactivate');
+register_deactivation_hook(DEBUG_LOG_TOOLS_PLUGIN_FILE, 'debug_log_tools_deactivate');
 
 /**
  * Enqueue plugin assets.
@@ -441,9 +445,9 @@ function debug_log_tools_display() {
 }
 
 function debug_log_tools_display_troubleshoot() {
-    $system_info = \DebugLogTools\Troubleshoot_Tools::get_system_info();
-    $issues = \DebugLogTools\Troubleshoot_Tools::check_common_issues();
-    $active_plugins = \DebugLogTools\Troubleshoot_Tools::get_active_plugins();
+    $system_info = DebugLogTools\Troubleshoot_Tools::get_system_info();
+    $issues = DebugLogTools\Troubleshoot_Tools::check_common_issues();
+    $active_plugins = DebugLogTools\Troubleshoot_Tools::get_active_plugins();
     ?>
     <div class="debug-log-tools-troubleshoot">
         <h3><?php esc_html_e('System Information', 'debug-log-tools'); ?></h3>
@@ -502,7 +506,7 @@ function debug_log_tools_display_log() {
     $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
     $log_exists = file_exists($log_file);
     $log_content = debug_log_tools_get_log_contents($log_file);
-    $debug_enabled = \DebugLogTools\Debug_Log_Manager::is_debug_enabled();
+    $debug_enabled = DebugLogTools\Debug_Log_Manager::is_debug_enabled();
     ?>
     <div class="debug-log-tools-wrap">
         <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
@@ -955,7 +959,7 @@ class Debug_Log_Tools_Admin {
         $log_file = trailingslashit(WP_CONTENT_DIR) . 'debug.log';
         $log_exists = file_exists($log_file);
         $log_content = $this->get_log_contents($log_file);
-        $debug_enabled = \DebugLogTools\Debug_Log_Manager::is_debug_enabled();
+        $debug_enabled = DebugLogTools\Debug_Log_Manager::is_debug_enabled();
         
         include_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'views/log-viewer.php';
     }
@@ -964,9 +968,9 @@ class Debug_Log_Tools_Admin {
      * Display the troubleshoot page
      */
     public function display_troubleshoot() {
-        $system_info = \DebugLogTools\Troubleshoot_Tools::get_system_info();
-        $issues = \DebugLogTools\Troubleshoot_Tools::check_common_issues();
-        $active_plugins = \DebugLogTools\Troubleshoot_Tools::get_active_plugins();
+        $system_info = DebugLogTools\Troubleshoot_Tools::get_system_info();
+        $issues = DebugLogTools\Troubleshoot_Tools::check_common_issues();
+        $active_plugins = DebugLogTools\Troubleshoot_Tools::get_active_plugins();
         
         include_once DEBUG_LOG_TOOLS_PLUGIN_DIR . 'views/troubleshoot.php';
     }
@@ -1189,7 +1193,7 @@ function debug_log_tools_handle_toggle() {
     $redirect_url = admin_url( 'tools.php?page=debug-log-tools' );
 
     try {
-        $debug_log_manager = new \DebugLogTools\Debug_Log_Manager();
+        $debug_log_manager = new DebugLogTools\Debug_Log_Manager();
         $debug_log_manager->toggle_debug( $enable_debug );
         // Success message as admin notice
         add_action( 'admin_notices', function() {
@@ -1227,7 +1231,7 @@ function debug_log_tools_get_live_log_callback() {
         wp_send_json_error( [ 'message' => esc_html__( 'You do not have sufficient permissions to perform this action.', 'debug-log-tools' ) ] );
     }
 
-    $log_manager = new \DebugLogTools\Debug_Log_Manager();
+    $log_manager = new DebugLogTools\Debug_Log_Manager();
     $log_file_path = $log_manager->get_log_file_path();
 
     $last_size = isset( $_POST['last_size'] ) ? intval( $_POST['last_size'] ) : 0;
@@ -1243,7 +1247,7 @@ function debug_log_tools_get_live_log_callback() {
 add_action( 'debug_log_tools_daily_log_rotation', 'debug_log_tools_perform_log_rotation' );
 
 function debug_log_tools_perform_log_rotation() {
-    $log_manager = new \DebugLogTools\Debug_Log_Manager();
+    $log_manager = new DebugLogTools\Debug_Log_Manager();
     $log_manager->rotate_log_file();
 }
 

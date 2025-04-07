@@ -1707,6 +1707,237 @@ I can see the issue. On line 393, there's a syntax error with the `const` declar
 
 ---
 
+I've fixed the syntax error by:
+1. Removing the `const` declaration inside the function
+2. Replacing it with a regular variable `$max_log_size`
+3. Updating all references to use the variable instead of the constant
+
+The linter errors shown are not actual issues - they're just warnings about WordPress core functions being used within a namespace. These functions will be available when the plugin is running within WordPress.
+
+The plugin should now work without the syntax error. The change maintains the same functionality but uses a regular variable instead of a constant since PHP doesn't allow constant declarations inside functions.
+
+Try activating the plugin again - the syntax error should be resolved. If you encounter any other issues, please let me know!
+
+---
+
+_**User**_
+
+Fatal error: Uncaught TypeError: call_user_func_array(): Argument #1 ($callback) must be a valid callback, function "debug_log_tools_init" not found or invalid function name in /home/burjmoda/public_html/wp-includes/class-wp-hook.php:324 Stack trace: #0 /home/burjmoda/public_html/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters() #1 /home/burjmoda/public_html/wp-includes/plugin.php(517): WP_Hook->do_action() #2 /home/burjmoda/public_html/wp-settings.php(559): do_action() #3 /home/burjmoda/public_html/wp-config.php(114): require_once('/home/burjmoda/...') #4 /home/burjmoda/public_html/wp-load.php(50): require_once('/home/burjmoda/...') #5 /home/burjmoda/public_html/wp-admin/admin.php(34): require_once('/home/burjmoda/...') #6 /home/burjmoda/public_html/wp-admin/plugin-editor.php(10): require_once('/home/burjmoda/...') #7 {main} thrown in /home/burjmoda/public_html/wp-includes/class-wp-hook.php on line 324
+
+---
+
+_**Assistant**_
+
+The error occurs because WordPress can't find the `debug_log_tools_init` function. This is happening because the function is defined within the `DebugLogTools` namespace but is being called from the global namespace. I'll help fix this issue.
+
+The main problem is that WordPress core functions are being called from within the namespace, but they need to be called from the global namespace. Let's modify the code to fix this:
+
+---
+
+```diff
+  
+  namespace DebugLogTools;
++ 
++ // Reference WordPress globals
++ use function \add_action;
++ use function \plugin_dir_path;
++ use function \plugin_dir_url;
++ use function \plugin_basename;
++ use function \load_plugin_textdomain;
++ use function \get_bloginfo;
++ use function \deactivate_plugins;
++ use function \wp_die;
++ use function \esc_html__;
++ use function \trailingslashit;
++ use function \wp_mkdir_p;
++ use function \get_option;
++ use function \add_option;
++ use function \flush_rewrite_rules;
++ use function \register_activation_hook;
++ use function \register_deactivation_hook;
++ use function \wp_clear_scheduled_hook;
+  
+  if (!defined('ABSPATH')) {
+  });
+  
+- /**
+-  * Initialize the plugin.
+-  *
+-  * @return void
+-  */
++ // Move init function outside namespace
+  function debug_log_tools_init() {
+      // Load text domain
+      load_plugin_textdomain(
+          'debug-log-tools',
+          false,
+-         dirname(DEBUG_LOG_TOOLS_PLUGIN_BASENAME) . '/languages'
++         dirname(plugin_basename(__FILE__)) . '/languages'
+      );
+  
+```
+
+---
+
+Let me fix this by moving the initialization function completely outside the namespace and properly importing the WordPress functions:
+
+---
+
+```diff
+   */
+  
+- namespace DebugLogTools;
+- 
+- // Reference WordPress globals
+- use function \add_action;
+- use function \plugin_dir_path;
+- use function \plugin_dir_url;
+- use function \plugin_basename;
+- use function \load_plugin_textdomain;
+- use function \get_bloginfo;
+- use function \deactivate_plugins;
+- use function \wp_die;
+- use function \esc_html__;
+- use function \trailingslashit;
+- use function \wp_mkdir_p;
+- use function \get_option;
+- use function \add_option;
+- use function \flush_rewrite_rules;
+- use function \register_activation_hook;
+- use function \register_deactivation_hook;
+- use function \wp_clear_scheduled_hook;
+- 
+  if (!defined('ABSPATH')) {
+      exit;
+  define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
+  define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(__FILE__));
++ 
++ namespace DebugLogTools;
+  
+  // Autoloader for module classes
+  });
+  
+- // Move init function outside namespace
++ // Outside namespace - WordPress hooks and initialization
+  function debug_log_tools_init() {
+      // Load text domain
+```
+
+---
+
+Let me make one final attempt to fix this by properly structuring the namespace and function calls:
+
+---
+
+```diff
+- <?php
+  /**
+   * Debug Log Tools
+      define('DEBUG_LOG_TOOLS_VERSION', '3.2.2');
+  }
+- define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
+- define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
+- define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', plugin_basename(__FILE__));
++ 
++ // Define plugin paths using WordPress functions before namespace declaration
++ define('DEBUG_LOG_TOOLS_PLUGIN_DIR', \plugin_dir_path(__FILE__));
++ define('DEBUG_LOG_TOOLS_PLUGIN_URL', \plugin_dir_url(__FILE__));
++ define('DEBUG_LOG_TOOLS_PLUGIN_BASENAME', \plugin_basename(__FILE__));
+  
++ // Plugin initialization function - must be in global namespace
++ function debug_log_tools_init() {
++     // Load text domain
++     \load_plugin_textdomain(
++         'debug-log-tools',
++         false,
++         dirname(\plugin_basename(__FILE__)) . '/languages'
++     );
++ 
++     try {
++         // Initialize core classes
++         $module_loader = new \DebugLogTools\Module_Loader();
++         $module_loader->init();
++ 
++         $debug_log_manager = new \DebugLogTools\Debug_Log_Manager();
++         $debug_log_manager->init();
++ 
++         $troubleshoot_tools = new \DebugLogTools\Troubleshoot_Tools();
++         $troubleshoot_tools->init();
++     } catch (\Exception $e) {
++         \error_log(sprintf(
++             'Debug Log Tools initialization error: %s',
++             $e->getMessage()
++         ));
++     }
++ }
++ 
++ // Register all WordPress hooks in global namespace
++ \add_action('plugins_loaded', 'debug_log_tools_init');
++ \register_activation_hook(__FILE__, 'debug_log_tools_activate');
++ \register_deactivation_hook(__FILE__, 'debug_log_tools_deactivate');
++ \add_action('wp_ajax_debug_log_tools_refresh', 'debug_log_tools_ajax_refresh');
++ \add_action('wp_ajax_debug_log_tools_flush', 'debug_log_tools_ajax_flush');
++ \add_action('wp_ajax_debug_log_tools_clear', 'debug_log_tools_ajax_clear');
++ \add_action('wp_ajax_debug_log_tools_update', 'debug_log_tools_update_log');
++ \add_action('wp_ajax_debug_log_tools_get_live_log', 'debug_log_tools_get_live_log_callback');
++ \add_action('admin_menu', 'debug_log_tools_admin_menu');
++ \add_action('admin_enqueue_scripts', 'debug_log_tools_admin_enqueue_scripts');
++ \add_action('admin_notices', 'debug_log_tools_admin_notices');
++ \add_action('admin_post_debug_log_tools_toggle', 'debug_log_tools_handle_toggle');
++ \add_action('init', 'debug_log_tools_init_scheduled_tasks');
++ \add_action('debug_log_tools/cleanup', 'debug_log_tools_cleanup');
++ \add_action('debug_log_tools_daily_log_rotation', 'debug_log_tools_perform_log_rotation');
++ \add_filter('cron_schedules', 'debug_log_tools_add_cron_schedule');
++ 
++ // Start namespace for plugin classes
+  namespace DebugLogTools;
+  
+      }
+  });
+- 
+- // Outside namespace - WordPress hooks and initialization
+- function debug_log_tools_init() {
+-     // Load text domain
+-     load_plugin_textdomain(
+-         'debug-log-tools',
+-         false,
+-         dirname(plugin_basename(__FILE__)) . '/languages'
+-     );
+- 
+-     try {
+-         // Initialize core classes
+-         $module_loader = new \DebugLogTools\Module_Loader();
+-         $module_loader->init();
+- 
+-         $debug_log_manager = new \DebugLogTools\Debug_Log_Manager();
+-         $debug_log_manager->init();
+- 
+-         $troubleshoot_tools = new \DebugLogTools\Troubleshoot_Tools();
+-         $troubleshoot_tools->init();
+-     } catch (\Exception $e) {
+-         error_log(sprintf(
+-             'Debug Log Tools initialization error: %s',
+-             $e->getMessage()
+-         ));
+-     }
+- }
+- add_action('plugins_loaded', 'debug_log_tools_init');
+  
+  /**
+      flush_rewrite_rules();
+  }
+- register_activation_hook(__FILE__, 'debug_log_tools_activate');
+  
+  /**
+      flush_rewrite_rules();
+  }
+- register_deactivation_hook(__FILE__, 'debug_log_tools_deactivate');
+  
+  /**
+```
+
+---
+
 
 
 ---
