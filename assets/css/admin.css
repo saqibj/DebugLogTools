@@ -25,6 +25,32 @@
   margin-right: 5px;
 }
 
+.debug-log-tools-controls .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.debug-log-tools-controls .button .dashicons {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  margin-top: 3px;
+}
+
+.debug-log-tools-controls .button .dashicons-update-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .debug-log-tools-controls .button-link-delete {
   color: #dc3232;
   border-color: #dc3232;
@@ -93,6 +119,29 @@
 /* System info table */
 .debug-log-tools-troubleshoot table {
   margin-bottom: 30px;
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.debug-log-tools-troubleshoot table th,
+.debug-log-tools-troubleshoot table td {
+  padding: 12px;
+  text-align: left;
+  border: 1px solid #ccd0d4;
+}
+
+.debug-log-tools-troubleshoot table th {
+  background-color: #f0f0f1;
+  font-weight: 600;
+}
+
+.debug-log-tools-troubleshoot table tr:nth-child(even) {
+  background-color: #f6f7f7;
+}
+
+.debug-log-tools-troubleshoot table tr:hover {
+  background-color: #f0f0f1;
 }
 
 /* Common issues list */
@@ -140,5 +189,29 @@
     color: #fff;
     background: #f55e5e;
     border-color: #f55e5e;
+  }
+
+  /* Dark mode table styles */
+  .debug-log-tools-troubleshoot table {
+    background: #32373c;
+    border-color: #1d2327;
+  }
+
+  .debug-log-tools-troubleshoot table th,
+  .debug-log-tools-troubleshoot table td {
+    border-color: #1d2327;
+    color: #bbc8d4;
+  }
+
+  .debug-log-tools-troubleshoot table th {
+    background-color: #23282d;
+  }
+
+  .debug-log-tools-troubleshoot table tr:nth-child(even) {
+    background-color: #2c3338;
+  }
+
+  .debug-log-tools-troubleshoot table tr:hover {
+    background-color: #2271b1;
   }
 } 

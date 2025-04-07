@@ -23,6 +23,10 @@ if (!defined('WPINC')) {
                     : esc_html__('Enable Debug Log', 'debug-log-tools'); ?>
             </button>
             <?php if ($log_exists): ?>
+                <button type="button" class="button" id="refresh-log">
+                    <span class="dashicons dashicons-update"></span>
+                    <?php esc_html_e('Refresh Log', 'debug-log-tools'); ?>
+                </button>
                 <button type="button" class="button" id="clear-all-log">
                     <?php esc_html_e('Clear Log', 'debug-log-tools'); ?>
                 </button>

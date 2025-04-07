@@ -264,6 +264,43 @@ jQuery(document).ready(function($) {
         setTimeout(startAutoRefresh, 1000); // Resume after 1 second
     });
 
+    // Handle refresh button click
+    $('#refresh-log').on('click', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const icon = button.find('.dashicons');
+        
+        // Add spinning animation
+        icon.addClass('dashicons-update-spin');
+        button.prop('disabled', true);
+
+        // Make AJAX call to refresh log content
+        $.ajax({
+            url: debugLogTools.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'debug_log_tools_refresh',
+                nonce: debugLogTools.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#debug-log-content').html(response.data);
+                    filterLog(); // Re-apply any active filters
+                } else {
+                    alert(response.data);
+                }
+            },
+            error: function() {
+                alert(debugLogTools.i18n.refreshError || 'Error refreshing log content.');
+            },
+            complete: function() {
+                // Remove spinning animation
+                icon.removeClass('dashicons-update-spin');
+                button.prop('disabled', false);
+            }
+        });
+    });
+
     // Add confirmation for Enable/Disable toggle
     const debugToggleForm = document.querySelector('form[action*="debug_log_tools_toggle"]');
     if (debugToggleForm) {

@@ -221,63 +221,99 @@ class Debug_Log_Manager {
     }
 
     /**
-     * Update wp-config.php to enable/disable debug logging
+     * Update wp-config.php with debug settings
      *
-     * @param bool $enable Whether to enable debug logging
-     * @return void
+     * Updates WordPress debug constants in wp-config.php.
+     * When debug logging is enabled, WP_DEBUG_DISPLAY is always set to false
+     * to prevent errors from being displayed while still logging them.
+     *
+     * @since 1.0.0
+     * @param bool $enable_debug Whether to enable debug logging
      * @throws Config_Exception If wp-config.php cannot be modified
      */
-    private function update_wp_config( $enable_debug ) {
+    private function update_wp_config($enable_debug) {
         $config_path = $this->locate_wp_config();
         
-        if ( ! $config_path || ! is_writable( $config_path ) ) {
+        if (!$config_path || !is_writable($config_path)) {
             throw new Config_Exception(
-                \esc_html__( 'wp-config.php is not writable.', 'debug-log-tools' ),
+                \esc_html__('wp-config.php is not writable.', 'debug-log-tools'),
                 Config_Exception::CONFIG_NOT_WRITABLE
             );
         }
 
-        $config_content = file_get_contents( $config_path );
-        if ( false === $config_content ) {
+        $config_content = file_get_contents($config_path);
+        if (false === $config_content) {
             throw new Config_Exception(
-                \esc_html__( 'Failed to read wp-config.php.', 'debug-log-tools' ),
+                \esc_html__('Failed to read wp-config.php.', 'debug-log-tools'),
                 Config_Exception::CONFIG_READ_ERROR
             );
         }
 
-        $debug_constants = array(
-            'WP_DEBUG',
-            'WP_DEBUG_LOG',
-            'WP_DEBUG_DISPLAY'
+        // Define the debug constants and their values
+        $debug_settings = array(
+            'WP_DEBUG' => $enable_debug ? 'true' : 'false',
+            'WP_DEBUG_LOG' => $enable_debug ? 'true' : 'false',
+            'WP_DEBUG_DISPLAY' => 'false' // Always false to prevent display while still logging
         );
 
-        foreach ( $debug_constants as $constant ) {
-            $value = $enable_debug ? 'true' : 'false';
-            if ( 'WP_DEBUG_DISPLAY' === $constant ) {
-                $value = $enable_debug ? 'false' : 'true';
-            }
-
-            $pattern = "/define\s*\(\s*['\"]" . $constant . "['\"]\s*,\s*(true|false)\s*\)/i";
-            $replacement = "define('" . $constant . "', " . $value . ")";
-
-            if ( preg_match( $pattern, $config_content ) ) {
-                $config_content = preg_replace( $pattern, $replacement, $config_content );
-            } else {
-                // Add constants if they don't exist
-                $config_content = preg_replace(
-                    "/(<\?php)/i",
-                    "<?php\ndefine('" . $constant . "', " . $value . ");",
-                    $config_content,
-                    1
-                );
-            }
-        }
-
-        if ( false === file_put_contents( $config_path, $config_content ) ) {
+        // Create backup
+        $backup_path = $config_path . '.bak';
+        if (!copy($config_path, $backup_path)) {
             throw new Config_Exception(
-                \esc_html__( 'Failed to update wp-config.php.', 'debug-log-tools' ),
+                \esc_html__('Failed to create backup of wp-config.php.', 'debug-log-tools'),
                 Config_Exception::CONFIG_WRITE_ERROR
             );
+        }
+
+        try {
+            foreach ($debug_settings as $constant => $value) {
+                $pattern = "/define\s*\(\s*['\"]" . $constant . "['\"]\s*,\s*(true|false)\s*\)/i";
+                $replacement = "define('" . $constant . "', " . $value . ")";
+
+                if (preg_match($pattern, $config_content)) {
+                    $config_content = preg_replace($pattern, $replacement, $config_content);
+                } else {
+                    // Add constants if they don't exist, after the opening PHP tag
+                    $config_content = preg_replace(
+                        "/(<\?php)/i",
+                        "<?php\ndefine('" . $constant . "', " . $value . ");",
+                        $config_content,
+                        1
+                    );
+                }
+            }
+
+            // Write changes atomically using a temporary file
+            $temp_path = $config_path . '.tmp';
+            if (false === file_put_contents($temp_path, $config_content)) {
+                throw new Config_Exception(
+                    \esc_html__('Failed to write temporary config file.', 'debug-log-tools'),
+                    Config_Exception::CONFIG_WRITE_ERROR
+                );
+            }
+
+            // Ensure proper permissions
+            chmod($temp_path, fileperms($config_path));
+
+            // Rename temporary file to actual config file
+            if (!rename($temp_path, $config_path)) {
+                unlink($temp_path);
+                throw new Config_Exception(
+                    \esc_html__('Failed to update wp-config.php.', 'debug-log-tools'),
+                    Config_Exception::CONFIG_WRITE_ERROR
+                );
+            }
+        } catch (\Exception $e) {
+            // Restore backup if something went wrong
+            if (file_exists($backup_path)) {
+                copy($backup_path, $config_path);
+            }
+            throw $e;
+        } finally {
+            // Clean up backup file
+            if (file_exists($backup_path)) {
+                unlink($backup_path);
+            }
         }
     }
 

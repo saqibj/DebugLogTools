@@ -11,7 +11,7 @@
  * Plugin Name: Debug Log Tools
  * Plugin URI:  https://github.com/saqibj/debug-log-tools
  * Description: View, filter, and manage WordPress debug logs from your dashboard. Provides advanced logging features, log rotation, and troubleshooting tools.
- * Version:     3.2.1
+ * Version:     3.2.2
  * Author:      Saqib Jawaid
  * Author URI:  https://saqibj.com/
  * Text Domain: debug-log-tools
@@ -39,6 +39,7 @@
  * @since      3.0.0 Added troubleshooting tools and security features
  * @since      3.2.0 Added live log tailing and improved filtering
  * @since      3.2.1 Fixed performance issues and improved error handling
+ * @since      3.2.2 Enhanced error recovery and optimized log operations
  */
 
 namespace DebugLogTools;
@@ -49,7 +50,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('DEBUG_LOG_TOOLS_VERSION')) {
-    define('DEBUG_LOG_TOOLS_VERSION', '3.2.1');
+    define('DEBUG_LOG_TOOLS_VERSION', '3.2.2');
 }
 define('DEBUG_LOG_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DEBUG_LOG_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));
