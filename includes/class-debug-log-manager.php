@@ -800,4 +800,171 @@ class Debug_Log_Manager {
             throw new \Exception(__('Failed to update wp-config.php', 'debug-log-tools'));
         }
     }
+
+    /**
+     * Rotate the log file
+     *
+     * Creates a backup of the current log file and starts a new one.
+     * Uses atomic operations and proper error handling.
+     *
+     * @since 3.2.2
+     * @throws Log_File_Exception If rotation operations fail
+     */
+    public function rotate_log_file() {
+        $log_file = $this->get_log_file_path();
+        
+        if (!file_exists($log_file)) {
+            return;
+        }
+
+        $backup_dir = trailingslashit(WP_CONTENT_DIR) . 'debug-logs/backups';
+        if (!file_exists($backup_dir)) {
+            wp_mkdir_p($backup_dir);
+        }
+
+        $backup_file = $backup_dir . '/debug-' . date('Y-m-d-H-i-s') . '.log';
+
+        try {
+            // Use streams for better memory efficiency
+            $read_handle = @fopen($log_file, 'r');
+            $write_handle = @fopen($backup_file, 'w');
+
+            if (!$read_handle || !$write_handle) {
+                throw new Log_File_Exception(
+                    esc_html__('Failed to open log files for rotation.', 'debug-log-tools'),
+                    Log_File_Exception::FILE_ROTATION_ERROR
+                );
+            }
+
+            // Copy content in chunks
+            while (!feof($read_handle)) {
+                $chunk = fread($read_handle, 8192);
+                if ($chunk === false || fwrite($write_handle, $chunk) === false) {
+                    throw new Log_File_Exception(
+                        esc_html__('Failed to write to backup log file.', 'debug-log-tools'),
+                        Log_File_Exception::FILE_ROTATION_ERROR
+                    );
+                }
+            }
+
+            // Close handles before truncating
+            fclose($read_handle);
+            fclose($write_handle);
+
+            // Truncate the original file atomically
+            $temp = tempnam(dirname($log_file), 'tmp');
+            if (false === $temp || !rename($temp, $log_file)) {
+                throw new Log_File_Exception(
+                    esc_html__('Failed to truncate log file.', 'debug-log-tools'),
+                    Log_File_Exception::FILE_ROTATION_ERROR
+                );
+            }
+
+            // Schedule cleanup of old backups
+            if (!wp_next_scheduled('debug_log_tools_cleanup_backups')) {
+                wp_schedule_single_event(time() + DAY_IN_SECONDS, 'debug_log_tools_cleanup_backups');
+            }
+
+        } catch (Exception $e) {
+            // Clean up resources
+            if (isset($read_handle) && is_resource($read_handle)) {
+                fclose($read_handle);
+            }
+            if (isset($write_handle) && is_resource($write_handle)) {
+                fclose($write_handle);
+            }
+            if (isset($temp) && file_exists($temp)) {
+                unlink($temp);
+            }
+            
+            // Log error and rethrow
+            error_log('Debug Log Tools: Log rotation failed - ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Clean up old backup log files
+     *
+     * Removes backup files older than 30 days
+     */
+    public function cleanup_backup_logs() {
+        $backup_dir = trailingslashit(WP_CONTENT_DIR) . 'debug-logs/backups';
+        if (!is_dir($backup_dir)) {
+            return;
+        }
+
+        $files = glob($backup_dir . '/debug-*.log');
+        $now = time();
+        
+        foreach ($files as $file) {
+            if (is_file($file) && $now - filemtime($file) >= 30 * DAY_IN_SECONDS) {
+                @unlink($file);
+            }
+        }
+    }
+
+    /**
+     * Get log file contents safely
+     *
+     * @param string $log_file Path to log file
+     * @param int    $max_size Maximum size to read in bytes
+     * @return string Log contents
+     * @throws Log_File_Exception If file operations fail
+     */
+    private function get_log_contents_safely($log_file, $max_size = self::MAX_LOG_SIZE) {
+        if (!file_exists($log_file)) {
+            throw new Log_File_Exception(
+                esc_html__('Log file does not exist.', 'debug-log-tools'),
+                Log_File_Exception::FILE_NOT_FOUND
+            );
+        }
+
+        if (!is_readable($log_file)) {
+            throw new Log_File_Exception(
+                esc_html__('Log file is not readable.', 'debug-log-tools'),
+                Log_File_Exception::FILE_NOT_READABLE
+            );
+        }
+
+        $handle = fopen($log_file, 'r');
+        if (false === $handle) {
+            throw new Log_File_Exception(
+                esc_html__('Failed to open log file.', 'debug-log-tools'),
+                Log_File_Exception::FILE_OPEN_ERROR
+            );
+        }
+
+        try {
+            $size = filesize($log_file);
+            if ($size > $max_size) {
+                if (-1 === fseek($handle, -$max_size, SEEK_END)) {
+                    throw new Log_File_Exception(
+                        esc_html__('Failed to seek in log file.', 'debug-log-tools'),
+                        Log_File_Exception::FILE_SEEK_ERROR
+                    );
+                }
+                // Skip first incomplete line
+                fgets($handle);
+            }
+
+            $contents = '';
+            while (!feof($handle)) {
+                $chunk = fread($handle, 8192); // Read in chunks
+                if (false === $chunk) {
+                    throw new Log_File_Exception(
+                        esc_html__('Failed to read from log file.', 'debug-log-tools'),
+                        Log_File_Exception::FILE_READ_ERROR
+                    );
+                }
+                $contents .= $chunk;
+            }
+
+            return $contents;
+        } finally {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+        }
+    }
 } 

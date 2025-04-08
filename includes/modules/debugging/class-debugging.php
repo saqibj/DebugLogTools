@@ -23,8 +23,13 @@ class Debugging extends Base_Module {
         parent::__construct();
         
         // Set module properties
-        $this->module_name = 'Debugging';
-        $this->module_description = 'View and manage WordPress debug logs';
+        if (function_exists('__')) {
+            $this->module_name = \__('Debugging', 'debug-log-tools');
+            $this->module_description = \__('View and manage WordPress debug logs', 'debug-log-tools');
+        } else {
+            $this->module_name = 'Debugging';
+            $this->module_description = 'View and manage WordPress debug logs';
+        }
     }
 
     /**
@@ -36,13 +41,19 @@ class Debugging extends Base_Module {
         }
 
         // Add menu pages and hooks
-        \add_action('admin_menu', array($this, 'add_menu_page'));
+        if (function_exists('add_action')) {
+            \add_action('admin_menu', array($this, 'add_menu_page'));
+        }
     }
 
     /**
      * Add menu page
      */
     public function add_menu_page() {
+        if (!function_exists('add_menu_page') || !function_exists('__')) {
+            return;
+        }
+
         \add_menu_page(
             \__('Debug Log', 'debug-log-tools'),
             \__('Debug Log', 'debug-log-tools'),
@@ -58,7 +69,14 @@ class Debugging extends Base_Module {
      * Render log page
      */
     public function render_log_page() {
-        if (!\current_user_can('manage_options')) {
+        if (!function_exists('current_user_can') || !\current_user_can('manage_options')) {
+            return;
+        }
+
+        if (!function_exists('esc_html__') || !function_exists('esc_html')) {
+            echo '<div class="wrap"><h1>Debug Log Viewer</h1><div class="debug-log-tools-content"><pre>';
+            echo htmlspecialchars($this->get_log_contents());
+            echo '</pre></div></div>';
             return;
         }
 
@@ -79,38 +97,31 @@ class Debugging extends Base_Module {
      * @return string
      */
     private function get_log_contents() {
+        if (!defined('WP_CONTENT_DIR')) {
+            return 'Error: WP_CONTENT_DIR is not defined.';
+        }
+
         $log_file = \WP_CONTENT_DIR . '/debug.log';
         
         if (!file_exists($log_file)) {
-            return \esc_html__('Debug log file does not exist.', 'debug-log-tools');
+            return function_exists('esc_html__') 
+                ? \esc_html__('Debug log file does not exist.', 'debug-log-tools')
+                : 'Debug log file does not exist.';
         }
 
         if (!is_readable($log_file)) {
-            return \esc_html__('Debug log file is not readable.', 'debug-log-tools');
+            return function_exists('esc_html__')
+                ? \esc_html__('Debug log file is not readable.', 'debug-log-tools')
+                : 'Debug log file is not readable.';
         }
 
-        $size = filesize($log_file);
-        if ($size === 0) {
-            return \esc_html__('Debug log file is empty.', 'debug-log-tools');
+        $contents = file_get_contents($log_file);
+        if (false === $contents) {
+            return function_exists('esc_html__')
+                ? \esc_html__('Failed to read debug log file.', 'debug-log-tools')
+                : 'Failed to read debug log file.';
         }
 
-        // Read the last 100KB of the file
-        $max_size = 102400; // 100KB
-        $handle = fopen($log_file, 'r');
-        
-        if ($size > $max_size) {
-            fseek($handle, -$max_size, SEEK_END);
-            // Skip first incomplete line
-            fgets($handle);
-        }
-        
-        $contents = '';
-        while (!feof($handle)) {
-            $contents .= fgets($handle);
-        }
-        
-        fclose($handle);
-        
         return $contents;
     }
 } 

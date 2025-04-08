@@ -13,6 +13,8 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 // Delete plugin options
 $options = array(
     'debug_log_tools_version',
+    'debug_log_tools_active_modules',
+    'debug_log_tools_settings',
     'debug_log_tools_module_debugging_active',
     'debug_log_tools_module_notifications_active',
     'debug_log_tools_module_performance_active',
@@ -31,6 +33,18 @@ foreach ($options as $option) {
 delete_transient('debug_log_tools_notifications_queue');
 delete_transient('debug_log_tools_performance_data');
 delete_transient('debug_log_tools_security_events');
+
+// Clean up log files
+$log_dir = trailingslashit(WP_CONTENT_DIR) . 'debug-logs';
+if (is_dir($log_dir)) {
+    $files = glob($log_dir . '/*.log');
+    foreach ($files as $file) {
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+    @rmdir($log_dir);
+}
 
 // Option name to delete
 $option_name = 'debug_log_tools_rotation_max_size';

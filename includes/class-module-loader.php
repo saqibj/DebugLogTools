@@ -41,6 +41,15 @@ class Module_Loader {
      * Load all available modules
      */
     private function load_modules() {
+        // Ensure the base module class is loaded first
+        $base_module_file = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/class-base-module.php';
+        if ( file_exists( $base_module_file ) ) {
+            require_once $base_module_file;
+        } else {
+            error_log( 'Debug Log Tools: Base module file not found: ' . $base_module_file );
+            // Optionally, you might want to return or throw an exception here if the base module is critical
+        }
+
         $module_dirs = array(
             'debugging',
             'notifications',

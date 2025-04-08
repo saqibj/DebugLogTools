@@ -3,11 +3,12 @@
  * Base Module Class
  *
  * @package DebugLogTools
+ * @subpackage Modules
  */
 
 namespace DebugLogTools\Modules;
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
     exit;
 }
 
@@ -38,9 +39,6 @@ abstract class Base_Module {
 
     /**
      * Constructor
-     *
-     * Child classes should override this and call parent::__construct()
-     * with the appropriate values.
      */
     public function __construct() {
         // Default values that will be overridden by child classes
@@ -90,8 +88,11 @@ abstract class Base_Module {
      * @return bool
      */
     public function is_active() {
-        $active_modules = \get_option( 'debug_log_tools_active_modules', array() );
-        return in_array( $this->module_id, $active_modules, true );
+        if (!function_exists('get_option')) {
+            return false;
+        }
+        $active_modules = \get_option('debug_log_tools_active_modules', array());
+        return in_array($this->module_id, $active_modules, true);
     }
 
     /**
@@ -100,11 +101,13 @@ abstract class Base_Module {
      * @return bool
      */
     public function activate() {
-        $active_modules = \get_option( 'debug_log_tools_active_modules', array() );
-        if ( ! in_array( $this->module_id, $active_modules, true ) ) {
+        if (!function_exists('get_option') || !function_exists('update_option')) {
+            return false;
+        }
+        $active_modules = \get_option('debug_log_tools_active_modules', array());
+        if (!in_array($this->module_id, $active_modules, true)) {
             $active_modules[] = $this->module_id;
-            \update_option( 'debug_log_tools_active_modules', $active_modules );
-            return true;
+            return \update_option('debug_log_tools_active_modules', $active_modules);
         }
         return false;
     }
@@ -115,12 +118,14 @@ abstract class Base_Module {
      * @return bool
      */
     public function deactivate() {
-        $active_modules = \get_option( 'debug_log_tools_active_modules', array() );
-        $key = array_search( $this->module_id, $active_modules, true );
-        if ( false !== $key ) {
-            unset( $active_modules[ $key ] );
-            \update_option( 'debug_log_tools_active_modules', array_values( $active_modules ) );
-            return true;
+        if (!function_exists('get_option') || !function_exists('update_option')) {
+            return false;
+        }
+        $active_modules = \get_option('debug_log_tools_active_modules', array());
+        $key = array_search($this->module_id, $active_modules, true);
+        if (false !== $key) {
+            unset($active_modules[$key]);
+            return \update_option('debug_log_tools_active_modules', array_values($active_modules));
         }
         return false;
     }
