@@ -50,18 +50,17 @@ class Debugging extends Base_Module {
      * Add menu page
      */
     public function add_menu_page() {
-        if (!function_exists('add_menu_page') || !function_exists('__')) {
+        if (!function_exists('add_submenu_page') || !function_exists('__')) {
             return;
         }
 
-        \add_menu_page(
+        \add_submenu_page(
+            'debug-log-tools',  // Parent menu slug
             \__('Debug Log', 'debug-log-tools'),
             \__('Debug Log', 'debug-log-tools'),
             'manage_options',
             'debug-log-view',
-            array($this, 'render_log_page'),
-            'dashicons-warning',
-            80
+            array($this, 'render_log_page')
         );
     }
 

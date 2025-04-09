@@ -79,6 +79,18 @@ The version is now consistent across all files in the codebase. Would you like m
 
 ---
 
+_**User**_
+
+compare @debug-log-tools.php with @debug-log-tools copy.php and tell me the difference
+
+---
+
+_**Assistant**_
+
+
+
+---
+
 
 
 ---

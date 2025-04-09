@@ -1,4 +1,5 @@
-<?php
+<?php declare(strict_types=1);
+
 /**
  * Debug Log Manager Class
  *
@@ -8,7 +9,8 @@
  * @package    DebugLogTools
  * @subpackage Classes
  * @author     Saqib Jawaid
- * @since      1.0.0
+ * @since      3.2.3
+ * @version    3.2.5
  */
 
 namespace DebugLogTools;
@@ -20,18 +22,13 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-declare(strict_types=1);
-
 /**
  * Class Debug_Log_Manager
  *
  * Core class responsible for managing WordPress debug log functionality.
  * Handles log file operations, configuration updates, and maintenance tasks.
  *
- * @since      1.0.0
- * @since      2.0.0 Added log rotation functionality
- * @since      3.0.0 Added log analysis and filtering features
- *
+ * @since      3.2.3
  * @package    DebugLogTools
  * @subpackage Classes
  */
@@ -45,7 +42,7 @@ class Debug_Log_Manager {
      * @since 2.0.0
      * @var   int
      */
-    const MAX_LOG_SIZE = 1024 * 1024;
+    private const MAX_LOG_SIZE = 1024 * 1024;
 
     /**
      * Cache key for log content
@@ -55,7 +52,7 @@ class Debug_Log_Manager {
      * @since 3.0.0
      * @var   string
      */
-    const CACHE_KEY = 'debug_log_content';
+    private const CACHE_KEY = 'debug_log_content';
 
     /**
      * Cache TTL in seconds (1 minute)
@@ -65,7 +62,7 @@ class Debug_Log_Manager {
      * @since 3.0.0
      * @var   int
      */
-    const CACHE_TTL = 60;
+    private const CACHE_TTL = 60;
 
     /**
      * Maximum number of lines to keep in memory for log rotation
@@ -73,7 +70,7 @@ class Debug_Log_Manager {
      * @since 3.2.1
      * @var   int
      */
-    const MAX_LINES_IN_MEMORY = 10000;
+    private const MAX_LINES_IN_MEMORY = 10000;
 
     /**
      * Maximum file size to process in one go (5MB)
@@ -81,7 +78,7 @@ class Debug_Log_Manager {
      * @since 3.2.1
      * @var   int
      */
-    const MAX_PROCESS_SIZE = 5 * 1024 * 1024;
+    private const MAX_PROCESS_SIZE = 5 * 1024 * 1024;
 
     /**
      * Initialize the debug log manager.
@@ -103,7 +100,7 @@ class Debug_Log_Manager {
      * @since 1.0.0
      * @return void
      */
-    public function init() {
+    public function init(): void {
         \add_action('debug_log_tools/cleanup', [$this, 'cleanup_old_logs']);
     }
 
@@ -127,8 +124,12 @@ class Debug_Log_Manager {
      *
      * @since  1.0.0
      * @return string Full path to the debug log file
+     * @throws \RuntimeException If WordPress is not loaded
      */
     public function get_log_file_path(): string {
+        if (!defined('WP_CONTENT_DIR')) {
+            throw new \RuntimeException('WordPress not loaded');
+        }
         return \trailingslashit(\WP_CONTENT_DIR) . 'debug.log';
     }
 
@@ -143,7 +144,7 @@ class Debug_Log_Manager {
      * @throws Log_File_Exception If log file creation fails
      * @throws Config_Exception If wp-config.php update fails
      */
-    public function handle_debug_toggle() {
+    public function handle_debug_toggle(): void {
         if (!\current_user_can('manage_options')) {
             \wp_die(
                 \esc_html_x(
@@ -156,7 +157,7 @@ class Debug_Log_Manager {
         }
 
         if (!isset($_POST['debug_log_tools_nonce']) || 
-            !\wp_verify_nonce($_POST['debug_log_tools_nonce'], 'toggle_debug_log')
+            !\wp_verify_nonce(sanitize_text_field($_POST['debug_log_tools_nonce']), 'toggle_debug_log')
         ) {
             \wp_die(
                 \esc_html_x(
@@ -205,7 +206,7 @@ class Debug_Log_Manager {
                     'error title',
                     'debug-log-tools'
                 ),
-                array('back_link' => true, 'response' => 500)
+                ['back_link' => true, 'response' => 500]
             );
         } catch (Log_File_Exception $e) {
             \wp_die(
@@ -215,7 +216,7 @@ class Debug_Log_Manager {
                     'error title',
                     'debug-log-tools'
                 ),
-                array('back_link' => true, 'response' => 500)
+                ['back_link' => true, 'response' => 500]
             );
         }
     }
@@ -563,7 +564,7 @@ class Debug_Log_Manager {
      * @param int         $cache_expiry    Cache expiration time in seconds.
      * @param string|null $filter_keywords Comma-separated keywords to filter log entries.
      * @param string|null $search_term     Term to search for in log entries.
-     * @return Generator|string[] Yields chunks of the log file content.
+     * @return \Generator|string[] Yields chunks of the log file content.
      * @throws Log_File_Exception If file operations fail.
      */
     public function get_log_content_cached(
@@ -572,7 +573,7 @@ class Debug_Log_Manager {
         int $cache_expiry = 300,
         ?string $filter_keywords = null,
         ?string $search_term = null
-    ): Generator {
+    ): \Generator {
         // Generate unique cache key based on file path and filters
         $cache_key = 'debug_log_tools_log_content_' . md5(
             $log_filepath . $filter_keywords . $search_term
@@ -966,5 +967,134 @@ class Debug_Log_Manager {
                 fclose($handle);
             }
         }
+    }
+
+    /**
+     * Render the debug log page content
+     *
+     * @since 3.2.5
+     * @return void
+     */
+    public function render_log_page() {
+        if (!\current_user_can('manage_options')) {
+            return;
+        }
+
+        $log_file = $this->get_log_file_path();
+        $log_exists = file_exists($log_file);
+        $log_size = $log_exists ? size_format(filesize($log_file)) : 0;
+        $log_content = $log_exists ? $this->get_log_contents_safely($log_file) : '';
+        ?>
+        <div class="wrap debug-log-viewer">
+            <div class="debug-log-actions">
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display: inline-block; margin-right: 10px;">
+                    <?php wp_nonce_field('debug_log_tools_action', 'debug_log_tools_nonce'); ?>
+                    <input type="hidden" name="action" value="debug_log_tools_clear">
+                    <button type="submit" class="button button-secondary" id="clear-log">
+                        <?php esc_html_e('Clear Log', 'debug-log-tools'); ?>
+                    </button>
+                </form>
+
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display: inline-block;">
+                    <?php wp_nonce_field('debug_log_tools_action', 'debug_log_tools_nonce'); ?>
+                    <input type="hidden" name="action" value="debug_log_tools_rotate">
+                    <button type="submit" class="button button-secondary" id="rotate-log">
+                        <?php esc_html_e('Rotate Log', 'debug-log-tools'); ?>
+                    </button>
+                </form>
+            </div>
+
+            <div class="debug-log-content">
+                <?php if ($log_exists && !empty($log_content)) : ?>
+                    <div class="log-info">
+                        <span class="log-size">
+                            <?php 
+                            printf(
+                                /* translators: %s: Log file size */
+                                esc_html__('Log file size: %s', 'debug-log-tools'),
+                                esc_html($log_size)
+                            ); 
+                            ?>
+                        </span>
+                    </div>
+                    <div class="log-viewer">
+                        <pre><?php echo esc_html($log_content); ?></pre>
+                    </div>
+                <?php else : ?>
+                    <div class="notice notice-info">
+                        <p><?php esc_html_e('No log entries found.', 'debug-log-tools'); ?></p>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <style>
+                .debug-log-viewer {
+                    background: var(--wp-admin-theme-color-darker-10, #1d2327);
+                    border-radius: 4px;
+                    padding: 20px;
+                    margin-top: 20px;
+                }
+
+                .debug-log-actions {
+                    margin-bottom: 20px;
+                }
+
+                .debug-log-actions .button {
+                    background: var(--wp-admin-theme-color, #2271b1);
+                    color: #fff;
+                    border-color: var(--wp-admin-theme-color-darker-10, #135e96);
+                    min-width: 100px;
+                    text-align: center;
+                    margin-right: 10px;
+                }
+
+                .debug-log-actions .button:hover,
+                .debug-log-actions .button:focus {
+                    background: var(--wp-admin-theme-color-darker-20, #0a4b78);
+                    border-color: var(--wp-admin-theme-color-darker-20, #0a4b78);
+                    color: #fff;
+                }
+
+                .log-info {
+                    margin-bottom: 15px;
+                    color: var(--wp-admin-theme-color-lighter-80, #e5f0f5);
+                }
+
+                .log-viewer {
+                    background: var(--wp-admin-theme-color-darker-20, #0a4b78);
+                    border-radius: 4px;
+                    padding: 15px;
+                }
+
+                .log-viewer pre {
+                    margin: 0;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    color: var(--wp-admin-theme-color-lighter-90, #f0f6fa);
+                    font-family: Consolas, Monaco, monospace;
+                    font-size: 13px;
+                    line-height: 1.5;
+                }
+
+                @media (prefers-color-scheme: dark) {
+                    .debug-log-viewer {
+                        background: #1a1a1a;
+                    }
+
+                    .log-viewer {
+                        background: #2c3338;
+                    }
+
+                    .log-info {
+                        color: #bbc8d4;
+                    }
+
+                    .log-viewer pre {
+                        color: #e2e4e7;
+                    }
+                }
+            </style>
+        </div>
+        <?php
     }
 } 

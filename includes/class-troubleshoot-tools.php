@@ -295,4 +295,103 @@ class Troubleshoot_Tools {
 
         return $results;
     }
+
+    /**
+     * Render troubleshoot page
+     */
+    public function render_troubleshoot_page() {
+        if (!\current_user_can('manage_options')) {
+            return;
+        }
+
+        $system_info = self::get_system_info();
+        $issues = self::check_common_issues();
+        $active_plugins = self::get_active_plugins();
+        ?>
+        <div class="wrap debug-log-tools-troubleshoot">
+            <h2><?php \esc_html_e('Troubleshooting Information', 'debug-log-tools'); ?></h2>
+
+            <div class="troubleshoot-section">
+                <h3><?php \esc_html_e('System Information', 'debug-log-tools'); ?></h3>
+                <table class="widefat" style="margin-bottom: 20px;">
+                    <tbody>
+                        <?php foreach ($system_info as $key => $value): ?>
+                            <tr>
+                                <td style="width: 30%;">
+                                    <strong><?php echo \esc_html(ucwords(str_replace('_', ' ', $key))); ?></strong>
+                                </td>
+                                <td><?php echo \esc_html($value); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <?php if (!empty($issues)): ?>
+            <div class="troubleshoot-section">
+                <h3><?php \esc_html_e('Detected Issues', 'debug-log-tools'); ?></h3>
+                <div class="notice-list">
+                    <?php foreach ($issues as $issue): ?>
+                        <div class="notice notice-<?php echo \esc_attr($issue['type']); ?> inline">
+                            <p><?php echo \esc_html($issue['message']); ?></p>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="troubleshoot-section">
+                <h3><?php \esc_html_e('Active Plugins', 'debug-log-tools'); ?></h3>
+                <table class="widefat">
+                    <thead>
+                        <tr>
+                            <th><?php \esc_html_e('Plugin Name', 'debug-log-tools'); ?></th>
+                            <th><?php \esc_html_e('Version', 'debug-log-tools'); ?></th>
+                            <th><?php \esc_html_e('Author', 'debug-log-tools'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($active_plugins as $plugin): ?>
+                            <tr>
+                                <td><?php echo \esc_html($plugin['name']); ?></td>
+                                <td><?php echo \esc_html($plugin['version']); ?></td>
+                                <td><?php echo \esc_html($plugin['author']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <style>
+                .debug-log-tools-troubleshoot .troubleshoot-section {
+                    margin-bottom: 30px;
+                }
+                .debug-log-tools-troubleshoot .notice-list {
+                    margin: 20px 0;
+                }
+                .debug-log-tools-troubleshoot .notice {
+                    margin: 5px 0;
+                }
+                .debug-log-tools-troubleshoot table {
+                    background: #fff;
+                    border-radius: 4px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                }
+                .debug-log-tools-troubleshoot th,
+                .debug-log-tools-troubleshoot td {
+                    padding: 12px 15px;
+                }
+                @media (prefers-color-scheme: dark) {
+                    .debug-log-tools-troubleshoot table {
+                        background: #2c3338;
+                        color: #e2e4e7;
+                    }
+                    .debug-log-tools-troubleshoot th {
+                        color: #e2e4e7;
+                    }
+                }
+            </style>
+        </div>
+        <?php
+    }
 } 

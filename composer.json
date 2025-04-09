@@ -3,7 +3,7 @@
     "description": "A powerful WordPress plugin for managing and analyzing debug logs",
     "type": "wordpress-plugin",
     "license": "GPL-3.0",
-    "version": "3.2.1",
+    "version": "3.2.5",
     "authors": [
         {
             "name": "Saqib Jawaid",

@@ -10,6 +10,14 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
     exit;
 }
 
+// Ensure WordPress is loaded
+if (!function_exists('delete_option')) {
+    if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/plugin.php')) {
+        exit('WordPress not found');
+    }
+    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+}
+
 // Delete plugin options
 $options = array(
     'debug_log_tools_version',
@@ -35,22 +43,26 @@ delete_transient('debug_log_tools_performance_data');
 delete_transient('debug_log_tools_security_events');
 
 // Clean up log files
-$log_dir = trailingslashit(WP_CONTENT_DIR) . 'debug-logs';
-if (is_dir($log_dir)) {
-    $files = glob($log_dir . '/*.log');
-    foreach ($files as $file) {
-        if (is_file($file)) {
-            @unlink($file);
+if (defined('WP_CONTENT_DIR')) {
+    $log_dir = trailingslashit(WP_CONTENT_DIR) . 'debug-logs';
+    if (is_dir($log_dir)) {
+        $files = glob($log_dir . '/*.log');
+        if ($files !== false) {
+            foreach ($files as $file) {
+                if (is_file($file) && is_writable($file)) {
+                    unlink($file);
+                }
+            }
+        }
+        if (is_writable($log_dir)) {
+            rmdir($log_dir);
         }
     }
-    @rmdir($log_dir);
 }
 
-// Option name to delete
-$option_name = 'debug_log_tools_rotation_max_size';
-
 // Delete plugin options from options table
-delete_option( $option_name );
+$option_name = 'debug_log_tools_rotation_max_size';
+delete_option($option_name);
 
 // For site options in multisite (if applicable, not used in current plugin, but good practice to include for future)
 // delete_site_option( $option_name );

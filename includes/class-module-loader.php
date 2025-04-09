@@ -27,14 +27,18 @@ class Module_Loader {
      */
     public function __construct() {
         $this->load_modules();
-        \add_action('admin_menu', array($this, 'add_modules_page'));
     }
 
     /**
      * Initialize the module loader
      */
     public function init() {
-        // Additional initialization if needed
+        // Initialize all loaded modules
+        foreach ($this->modules as $module) {
+            if ($module->is_active()) {
+                $module->init();
+            }
+        }
     }
 
     /**
@@ -43,11 +47,11 @@ class Module_Loader {
     private function load_modules() {
         // Ensure the base module class is loaded first
         $base_module_file = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/class-base-module.php';
-        if ( file_exists( $base_module_file ) ) {
+        if (file_exists($base_module_file)) {
             require_once $base_module_file;
         } else {
-            error_log( 'Debug Log Tools: Base module file not found: ' . $base_module_file );
-            // Optionally, you might want to return or throw an exception here if the base module is critical
+            error_log('Debug Log Tools: Base module file not found: ' . $base_module_file);
+            return;
         }
 
         $module_dirs = array(
@@ -61,6 +65,14 @@ class Module_Loader {
             $module_path = DEBUG_LOG_TOOLS_PLUGIN_DIR . 'includes/modules/' . $dir;
             if (is_dir($module_path)) {
                 $this->load_module($dir);
+            }
+        }
+
+        // Activate modules by default if none are active
+        $active_modules = get_option('debug_log_tools_active_modules', array());
+        if (empty($active_modules)) {
+            foreach ($this->modules as $module_id => $module) {
+                $module->activate();
             }
         }
     }
@@ -133,37 +145,25 @@ class Module_Loader {
     }
 
     /**
-     * Add modules management page
-     */
-    public function add_modules_page() {
-        \add_submenu_page(
-            'tools.php',
-            \__('Debug Log Modules', 'debug-log-tools'),
-            \__('Debug Log Modules', 'debug-log-tools'),
-            'manage_options',
-            'debug-log-modules',
-            array($this, 'render_modules_page')
-        );
-    }
-
-    /**
      * Render modules management page
      */
-    public function render_modules_page() {
+    public static function render_modules_page() {
         if (!\current_user_can('manage_options')) {
             return;
         }
+
+        $module_loader = new self();
 
         // Handle module activation/deactivation
         if (isset($_POST['module_action']) && \check_admin_referer('debug_log_tools_modules')) {
             $module_id = \sanitize_text_field($_POST['module_id']);
             $action = \sanitize_text_field($_POST['module_action']);
 
-            if (isset($this->modules[$module_id])) {
+            if (isset($module_loader->modules[$module_id])) {
                 if ($action === 'activate') {
-                    $this->modules[$module_id]->activate();
+                    $module_loader->modules[$module_id]->activate();
                 } elseif ($action === 'deactivate') {
-                    $this->modules[$module_id]->deactivate();
+                    $module_loader->modules[$module_id]->deactivate();
                 }
             }
         }
@@ -174,7 +174,7 @@ class Module_Loader {
             <h1><?php echo \esc_html__('Debug Log Modules', 'debug-log-tools'); ?></h1>
             
             <div class="modules-grid">
-                <?php foreach ($this->modules as $module_id => $module): ?>
+                <?php foreach ($module_loader->modules as $module_id => $module): ?>
                     <div class="module-card">
                         <h2><?php echo \esc_html($module->get_module_name()); ?></h2>
                         <p><?php echo \esc_html($module->get_module_description()); ?></p>
@@ -210,18 +210,87 @@ class Module_Loader {
                 .module-card {
                     background: #fff;
                     padding: 20px;
-                    border-radius: 4px;
-                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
 
                 .module-card h2 {
                     margin-top: 0;
+                    color: #1d2327;
+                    font-size: 1.3em;
+                }
+
+                .module-card p {
+                    color: #50575e;
+                    margin: 1em 0;
+                    min-height: 3em;
+                }
+
+                .module-card .button {
+                    display: inline-block;
+                    min-width: 100px;
+                    text-align: center;
+                    padding: 8px 16px;
+                    height: auto;
+                    line-height: 1.4;
+                    font-size: 14px;
+                    font-weight: 500;
+                    border-radius: 4px;
+                    transition: all 0.2s ease;
+                }
+
+                .module-card .button-primary {
+                    background: #2271b1;
+                    border-color: #2271b1;
+                    color: #fff;
+                    text-shadow: none;
+                }
+
+                .module-card .button-primary:hover,
+                .module-card .button-primary:focus {
+                    background: #135e96;
+                    border-color: #135e96;
+                    color: #fff;
+                }
+
+                .module-card .button:not(.button-primary) {
+                    background: #f6f7f7;
+                    border-color: #2271b1;
+                    color: #2271b1;
+                }
+
+                .module-card .button:not(.button-primary):hover,
+                .module-card .button:not(.button-primary):focus {
+                    background: #f0f0f1;
+                    border-color: #0a4b78;
+                    color: #0a4b78;
                 }
 
                 @media (prefers-color-scheme: dark) {
                     .module-card {
-                        background: #2b2b2b;
-                        color: #f0f0f0;
+                        background: #2c3338;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    }
+
+                    .module-card h2 {
+                        color: #e2e4e7;
+                    }
+
+                    .module-card p {
+                        color: #bbc8d4;
+                    }
+
+                    .module-card .button:not(.button-primary) {
+                        background: #2c3338;
+                        border-color: #2271b1;
+                        color: #2271b1;
+                    }
+
+                    .module-card .button:not(.button-primary):hover,
+                    .module-card .button:not(.button-primary):focus {
+                        background: #32373c;
+                        border-color: #135e96;
+                        color: #135e96;
                     }
                 }
             </style>
